@@ -1,0 +1,17 @@
+# PlatformIO build artifacts (each project also has its own .gitignore)
+firmware/**/.pio/
+
+# Local device config - contains machine-specific ports and MACs, do not commit
+device_macs.mk
+device_ports.mk
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.zed/
+
+# OS
+.DS_Store
+Thumbs.db
