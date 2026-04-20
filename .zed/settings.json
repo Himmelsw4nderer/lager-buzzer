@@ -1,0 +1,18 @@
+// .zed/settings.json
+{
+  // associate .ino with c++
+  "file_types": {
+    "Arduino": ["cpp", "h", "hpp"],
+  },
+
+  "lsp": {
+    "arduino-language-server": {
+      "binary": {
+        "arguments": [
+          "-fqbn",
+          "esp32:esp32:esp32s3:CDCOnBoot=cdc,CPUFreq=240,DFUOnBoot=default,FlashMode=qio,FlashSize=16M,MSCOnBoot=default,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB,USBMode=hwcdc",
+        ],
+      },
+    },
+  },
+}
