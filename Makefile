@@ -25,7 +25,7 @@ BUZZER_DEVICE_ID ?=
 MAC              ?=
 
 # Use uv to run esptool - no separate install needed.
-ESPTOOL := uvx esptool
+ESPTOOL := uv tool run esptool
 
 .DEFAULT_GOAL := help
 
@@ -69,7 +69,7 @@ scan:
 	@for port in /dev/ttyUSB* /dev/ttyACM*; do \
 	  [ -e "$$port" ] || continue; \
 	  echo "=== $$port ==="; \
-	  $(ESPTOOL) --chip esp8266 --port $$port read_mac 2>&1 | head -20 || true; \
+	  $(ESPTOOL) --chip esp8266 --port $$port read-mac 2>&1 | head -20 || true; \
 	  echo ""; \
 	done
 
@@ -81,7 +81,7 @@ find-port:
 	@for port in /dev/ttyUSB* /dev/ttyACM*; do \
 	  [ -e "$$port" ] || continue; \
 	  printf "  $$port ... " >&2; \
-	  out=$$($(ESPTOOL) --chip esp8266 --port $$port read_mac 2>&1 || true); \
+	  out=$$($(ESPTOOL) --chip esp8266 --port $$port read-mac 2>&1 || true); \
 	  if echo "$$out" | grep -qi "$(MAC)"; then \
 	    printf "found\n" >&2; \
 	    echo $$port; exit 0; \
