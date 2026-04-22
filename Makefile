@@ -75,7 +75,7 @@ help:
 identify:
 	@for port in /dev/ttyUSB* /dev/ttyACM*; do \
 	  [ -e "$$port" ] || continue; \
-	  out=$$($(ESPTOOL) --chip esp8266 --port $$port read-mac 2>&1 || true); \
+	  out=$$($(ESPTOOL) --chip auto --port $$port read-mac 2>&1 || true); \
 	  mac=$$(echo "$$out" | grep -i "MAC:" | head -1 | awk '{print tolower($$NF)}'); \
 	  [ -n "$$mac" ] || { echo "  $$port  could not read MAC"; continue; }; \
 	  label="unknown"; \
@@ -105,7 +105,7 @@ find-port:
 	@for port in /dev/ttyUSB* /dev/ttyACM*; do \
 	  [ -e "$$port" ] || continue; \
 	  printf "  $$port ... " >&2; \
-	  out=$$($(ESPTOOL) --chip esp8266 --port $$port read-mac 2>&1 || true); \
+	  out=$$($(ESPTOOL) --chip auto --port $$port read-mac 2>&1 || true); \
 	  if echo "$$out" | grep -qi "$(MAC)"; then \
 	    printf "found\n" >&2; \
 	    echo $$port; exit 0; \
