@@ -5,7 +5,7 @@
 #   BUZZER_MACS    := 24:a1:60:2e:d1:47 11:22:33:44:55:66
 #   BUZZER_IDS     := 101 102
 
-.PHONY: help scan find-port lookup-buzzer-mac \
+.PHONY: help identify find-port lookup-buzzer-mac \
         controller-build controller-upload controller-monitor \
         buzzer-build buzzer-upload buzzer-monitor \
         clean
@@ -35,7 +35,7 @@ help:
 	@echo "Lagerbuzzer Makefile"
 	@echo ""
 	@echo "Diagnostic:"
-	@echo "  scan                                  Print raw esptool output for every connected port"
+	@echo "  identify                              Scan ports and label each device (controller/buzzer/unknown)"
 	@echo "  find-port MAC=<mac>                   Find the serial port for a given MAC"
 	@echo "  lookup-buzzer-mac BUZZER_DEVICE_ID=<> Print the MAC for a given buzzer ID"
 	@echo ""
@@ -61,16 +61,28 @@ help:
 
 # ─── Diagnostic ──────────────────────────────────────────────────────────────
 
-# Prints raw esptool output for every connected port.
-# Use this to verify MACs and that esptool can reach devices.
-scan:
-	@echo "esptool: $(ESPTOOL)"
-	@echo ""
+# Scans connected ports and labels each device against device_macs.mk.
+identify:
 	@for port in /dev/ttyUSB* /dev/ttyACM*; do \
 	  [ -e "$$port" ] || continue; \
-	  echo "=== $$port ==="; \
-	  $(ESPTOOL) --chip esp8266 --port $$port read-mac 2>&1 | head -20 || true; \
-	  echo ""; \
+	  out=$$($(ESPTOOL) --chip esp8266 --port $$port read-mac 2>&1 || true); \
+	  mac=$$(echo "$$out" | grep -i "MAC:" | head -1 | awk '{print tolower($$NF)}'); \
+	  [ -n "$$mac" ] || { echo "  $$port  could not read MAC"; continue; }; \
+	  label="unknown"; \
+	  if [ "$$(echo $(CONTROLLER_MAC) | tr A-Z a-z)" = "$$mac" ]; then \
+	    label="controller"; \
+	  else \
+	    idx=1; \
+	    for bmac in $(BUZZER_MACS); do \
+	      if [ "$$(echo $$bmac | tr A-Z a-z)" = "$$mac" ]; then \
+	        id=$$(echo $(BUZZER_IDS) | awk -v n=$$idx '{print $$n}'); \
+	        label="buzzer  ID=$$id"; \
+	        break; \
+	      fi; \
+	      idx=$$((idx + 1)); \
+	    done; \
+	  fi; \
+	  echo "  $$port  $$mac  $$label"; \
 	done
 
 # Finds the serial port for a given MAC.
