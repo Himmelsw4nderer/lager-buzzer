@@ -58,7 +58,7 @@ WebServer server(80);
 void handleRoot() {
     String html = F("<!DOCTYPE html><html><head>"
                     "<meta charset='utf-8'>"
-                    "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                    "<meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='refresh' content='1'>"
                     "<title>Lagerbuzzer</title>"
                     "<style>"
                     "body{font-family:sans-serif;max-width:480px;margin:2rem auto;padding:0 1rem}"
@@ -100,13 +100,8 @@ void setup() {
     WiFi.mode(WIFI_AP);
     delay(100);
 
-    WiFi.softAPConfig(
-        IPAddress(10, 0, 0, 1),
-        IPAddress(10, 0, 0, 1),
-        IPAddress(255, 255, 255, 0)
-    );
-
-    WiFi.softAP("Lagerbuzzer", "buzzer123", 1, 0, 4);
+    WiFi.setTxPower(WIFI_POWER_8_5dBm);
+    WiFi.softAP("Lagerbuzzer", "buzzer123");
 
     Serial.printf("[WEB-SERVER] AP ready  SSID=Lagerbuzzer  IP=%s\n",
                   WiFi.softAPIP().toString().c_str());
