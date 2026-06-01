@@ -35,7 +35,7 @@ Create a `device_macs.mk` file in the project root (it is gitignored — never c
 
 ```make
 CONTROLLER_MAC := aa:bb:cc:11:22:33
-BUZZER_MACS    := 24:a1:60:2e:d1:47 84:cc:a8:82:99:9b 8c:ce:4e:d4:51:f9
+BUZZER_MACS    := aa:bb:cc:11:22:33 aa:bb:cc:11:22:33 aa:bb:cc:11:22:33
 BUZZER_IDS     := 101 102 103
 ```
 
