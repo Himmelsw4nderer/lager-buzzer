@@ -2,30 +2,35 @@
 #include <WiFi.h>
 #include <QuickEspNow.h>
 #include "buzzer_config.h"
+#include <BuzzController.h>
 
 #define SERIAL1_TX 17
 #define SERIAL1_RX 18
 
+BuzzController controller;
+
 uint16_t pressOrder[BUZZER_COUNT];
-size_t   pressCount = 0;
+size_t pressCount = 0;
+String rx1Buf = "";
 
-volatile bool    pendingBuzz = false;
-volatile int16_t pendingId   = -1;
+void printOrder();
+void pushStateToWebServer();
 
-static String rx1Buf = "";
-
-int16_t lookupBuzzerId(const uint8_t* mac) {
-    for (size_t i = 0; i < BUZZER_COUNT; i++) {
-        if (memcmp(mac, BUZZER_MACS[i], 6) == 0) return BUZZER_IDS[i];
-    }
-    return -1;
-}
-
-bool alreadyPressed(uint16_t id) {
+void onBuzz(uint16_t buzzerId, uint32_t calculatedTime) {
     for (size_t i = 0; i < pressCount; i++) {
-        if (pressOrder[i] == id) return true;
+        if (pressOrder[i] == buzzerId) {
+            Serial.printf("[CONTROLLER] Duplicate press from ID=%d\n", buzzerId);
+            return;
+        }
     }
-    return false;
+    
+    pressOrder[pressCount++] = buzzerId;
+    
+    Serial.printf("[CONTROLLER] Buzz from ID=%d (position %d), time=%lu\n", 
+        buzzerId, pressCount, calculatedTime);
+    
+    printOrder();
+    pushStateToWebServer();
 }
 
 void printOrder() {
@@ -64,24 +69,18 @@ void processSerial1() {
     }
 }
 
-void onDataReceived(uint8_t* mac, uint8_t* data, uint8_t len, signed int rssi, bool broadcast) {
-    int16_t id = lookupBuzzerId(mac);
-    if (id < 0 || pendingBuzz) return;
-    pendingId   = id;
-    pendingBuzz = true;
-}
-
 void setup() {
     Serial.begin(115200);
     Serial.println("\n[CONTROLLER] Starting...");
 
     Serial1.begin(115200, SERIAL_8N1, SERIAL1_RX, SERIAL1_TX);
 
-    WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
+    controller.begin(1, 2000); // Use channel 1
+    controller.onBuzz(onBuzz);
 
-    quickEspNow.onDataRcvd(onDataReceived);
-    quickEspNow.begin(1);
+    for (size_t i = 0; i < BUZZER_COUNT; i++) {
+        controller.registerBuzzer(BUZZER_IDS[i], BUZZER_MACS[i]);
+    }
 
     pushStateToWebServer();
 
@@ -89,22 +88,6 @@ void setup() {
 }
 
 void loop() {
+    controller.update();
     processSerial1();
-
-    if (pendingBuzz) {
-        pendingBuzz = false;
-        int16_t id  = pendingId;
-
-        if (id < 0) return;
-
-        if (alreadyPressed((uint16_t)id)) {
-            Serial.printf("[CONTROLLER] Duplicate press from ID=%d — ignored\n", id);
-            return;
-        }
-
-        pressOrder[pressCount++] = (uint16_t)id;
-        Serial.printf("[CONTROLLER] Buzz from ID=%d (position %d)\n", id, pressCount);
-        printOrder();
-        pushStateToWebServer();
-    }
 }
