@@ -2,55 +2,58 @@
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
-#include <QuickEspNow.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
 
-// Message types
-#define MSG_TYPE_SYNC 0
-#define MSG_TYPE_BUZZ 1
+// MQTT topics
+#define MQTT_TIME_SYNC_TOPIC "lagerbuzzer/time_sync"
+#define MQTT_BUZZ_TOPIC "lagerbuzzer/buzz"
 
-// Message structures (packed to avoid padding)
-struct __attribute__((packed)) SyncMessage {
-    uint8_t type = MSG_TYPE_SYNC;
-    uint32_t controllerSendTime;
-    uint32_t sequenceNumber;
-};
-
-struct __attribute__((packed)) BuzzMessage {
-    uint8_t type = MSG_TYPE_BUZZ;
-    uint32_t buttonPressTime;
-    uint32_t lastSyncReceiveTime;
-    uint32_t syncWasSentAt;
-    uint32_t buzzSendTime;
-    uint32_t buzzSequenceNumber;
-};
+// JSON buffer sizes
+#define JSON_TIME_SYNC_BUFFER_SIZE 128
+#define JSON_BUZZ_BUFFER_SIZE 256
 
 class BuzzSync {
 public:
     BuzzSync();
-    
-    void begin(uint32_t channel = 1, uint32_t syncIntervalMs = 2000);
-    
+
+    void begin(const char* mqttServer, uint16_t mqttPort = 1883,
+               const char* mqttUser = nullptr, const char* mqttPassword = nullptr,
+               const char* clientId = nullptr, uint32_t syncTimeoutMs = 5000);
+
     void update();
-    
+
     bool sendBuzz(uint32_t buttonPressTime);
-    
+
     bool isSynced() const;
+
+    void reconnect();
+
+    static BuzzSync* _instance;
 
 private:
     struct SyncState {
-        uint32_t controllerSendTime = 0;
-        uint32_t localReceiveTime = 0;
-        uint32_t sequenceNumber = 0;
+        uint32_t timeStamp = 0;  // Unix timestamp from controller
+        uint32_t localReceiveTime = 0;  // Local millis() when sync was received
         bool valid = false;
     };
-    
+
     SyncState _lastSync;
-    uint32_t _syncIntervalMs;
-    uint32_t _lastSyncTime = 0;
+    uint32_t _syncTimeoutMs;
     uint32_t _lastSyncReceivedTime = 0;
-    
-    static BuzzSync* _instance;
-    friend void _buzzSyncEspNowCallback(uint8_t* mac, uint8_t* data, uint8_t len, signed int rssi, bool broadcast);
-    
-    void _handleIncoming(uint8_t* mac, uint8_t* data, uint8_t len);
+
+    WiFiClient _wifiClient;
+    PubSubClient _mqttClient;
+
+    const char* _mqttServer;
+    uint16_t _mqttPort;
+    const char* _mqttUser;
+    const char* _mqttPassword;
+    const char* _clientId;
+
+    friend void _mqttTimeSyncCallback(char* topic, uint8_t* payload, unsigned int length);
+    friend void _mqttCallback(char* topic, uint8_t* payload, unsigned int length);
+
+    void _handleTimeSyncMessage(const char* payload, uint16_t length);
+    void _setupMqttCallbacks();
 };
