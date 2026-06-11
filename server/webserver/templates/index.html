@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Kolpingjugend | LagerBuzzer</title>
+        <style>
+            /* Kolpingjugend Corporate Design Colors */
+            :root {
+                --kolping-orange: #ea5b0c;
+                --kolping-black: #1a1a1a;
+                --bg-color: #f4f6f8;
+                --card-bg: #ffffff;
+                --disabled-color: #a0a0a0;
+            }
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            }
+
+            body {
+                background: var(--bg-color);
+                color: var(--kolping-black);
+                min-height: 100vh;
+                padding-bottom: 40px;
+            }
+
+            /* Header */
+            header {
+                background: var(--kolping-black);
+                color: #fff;
+                padding: 20px;
+                text-align: center;
+                border-bottom: 5px solid var(--kolping-orange);
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            h1 {
+                font-size: 2.2em;
+                font-weight: 300;
+            }
+            h1 strong {
+                color: var(--kolping-orange);
+                font-weight: 800;
+            }
+
+            .container {
+                max-width: 1100px;
+                margin: 30px auto;
+                padding: 0 20px;
+            }
+
+            /* Winner Display */
+            .winner-display {
+                background: var(--card-bg);
+                padding: 40px;
+                border-radius: 12px;
+                text-align: center;
+                margin-bottom: 30px;
+                box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05);
+                border: 2px solid transparent;
+                transition: all 0.3s ease;
+            }
+            .winner-display.has-winner {
+                border-color: var(--kolping-orange);
+                animation: pulse-border 1.5s infinite;
+            }
+            .winner-title {
+                font-size: 1.1em;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                color: #666;
+                margin-bottom: 10px;
+            }
+            .winner-name {
+                font-size: 4em;
+                font-weight: 800;
+                color: var(--kolping-black);
+            }
+            .has-winner .winner-name {
+                color: var(--kolping-orange);
+            }
+
+            @keyframes pulse-border {
+                0% {
+                    box-shadow: 0 0 0 0 rgba(234, 91, 12, 0.4);
+                }
+                70% {
+                    box-shadow: 0 0 0 15px rgba(234, 91, 12, 0);
+                }
+                100% {
+                    box-shadow: 0 0 0 0 rgba(234, 91, 12, 0);
+                }
+            }
+
+            /* Global Controls */
+            .controls {
+                display: flex;
+                gap: 15px;
+                margin-bottom: 40px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .btn {
+                padding: 15px 30px;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: bold;
+                font-size: 1.1em;
+                text-transform: uppercase;
+                transition:
+                    transform 0.1s,
+                    opacity 0.2s,
+                    box-shadow 0.2s;
+                position: relative;
+                overflow: hidden;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            }
+            .btn:active {
+                transform: scale(0.97);
+            }
+            .btn::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(
+                    180deg,
+                    rgba(255, 255, 255, 0.2) 0%,
+                    rgba(255, 255, 255, 0) 100%
+                );
+                opacity: 0;
+                transition: opacity 0.2s;
+            }
+            .btn:hover::before {
+                opacity: 1;
+            }
+            .btn[data-color] {
+                background: var(--btn-color, #666);
+                color: white;
+            }
+            .btn[data-color]:hover {
+                filter: brightness(1.1);
+            }
+
+            /* Button color classes */
+            .action-reset {
+                --btn-color: #ea5b0c;
+            }
+            .action-lock {
+                --btn-color: #d32f2f;
+            }
+            .action-enable-all {
+                --btn-color: #4caf50;
+            }
+
+            /* Buzzer Grid */
+            .section-title {
+                margin-bottom: 15px;
+                font-size: 1.5em;
+                border-bottom: 2px solid #ddd;
+                padding-bottom: 5px;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 20px;
+            }
+
+            .card {
+                background: var(--card-bg);
+                border-radius: 10px;
+                padding: 20px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+                border-left: 6px solid var(--kolping-orange);
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+            .card.disabled {
+                border-left-color: var(--disabled-color);
+                opacity: 0.6;
+                background: #fdfdfd;
+            }
+
+            .card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 15px;
+            }
+            .card-header h3 {
+                font-size: 1.4em;
+                word-break: break-all;
+                margin-right: 10px;
+            }
+
+            .icon-btn {
+                background: none;
+                border: none;
+                cursor: pointer;
+                font-size: 1.2em;
+                color: #666;
+                transition: color 0.2s;
+            }
+            .icon-btn:hover {
+                color: var(--kolping-orange);
+            }
+
+            .card-body p {
+                font-size: 0.9em;
+                color: #555;
+                margin-bottom: 5px;
+            }
+
+            .card-actions {
+                margin-top: 20px;
+                display: flex;
+                gap: 10px;
+            }
+
+            /* Color indicator for buzzer cards */
+            .card-header h3 {
+                transition: color 0.2s;
+            }
+
+            /* Color picker button */
+            .icon-btn[title="Farbe ändern"] {
+                font-size: 1.3em;
+            }
+            .btn-small {
+                padding: 8px 12px;
+                font-size: 0.9em;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-weight: bold;
+                width: 100%;
+            }
+            .btn-disable {
+                background: #feebeb;
+                color: #d32f2f;
+            }
+            .btn-enable {
+                background: #e8f5e9;
+                color: #2e7d32;
+            }
+            .btn-disable:hover {
+                background: #fcd5d5;
+            }
+            .btn-enable:hover {
+                background: #c8e6c9;
+            }
+
+            /* Top Status Bar */
+            .status-bar {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+                font-size: 0.85em;
+                color: #666;
+                font-weight: bold;
+            }
+            .status-bar div {
+                display: flex;
+                gap: 8px;
+            }
+            .status-indicator.online {
+                color: #2e7d32;
+            }
+            .status-indicator.offline {
+                color: #d32f2f;
+            }
+
+            /* Language Selector */
+            .lang-selector {
+                display: flex;
+                gap: 8px;
+                margin-left: 20px;
+            }
+            .lang-btn {
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                color: white;
+                padding: 6px 12px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 0.9em;
+                transition: all 0.2s;
+            }
+            .lang-btn:hover {
+                background: rgba(255, 255, 255, 0.3);
+            }
+
+            /* Runner-ups Display */
+            .runner-ups {
+                background: var(--card-bg);
+                padding: 20px;
+                border-radius: 12px;
+                margin-bottom: 30px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+                max-width: 300px;
+            }
+            .runner-ups-title {
+                font-size: 1em;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: #666;
+                margin-bottom: 10px;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 5px;
+            }
+            .runner-ups-list {
+                list-style: none;
+            }
+            .runner-ups-list li {
+                padding: 8px 0;
+                border-bottom: 1px solid #f0f0f0;
+                font-size: 0.95em;
+            }
+            .runner-ups-list li:last-child {
+                border-bottom: none;
+            }
+            .runner-up-name {
+                font-weight: 600;
+                color: var(--kolping-black);
+            }
+            .runner-up-position {
+                display: inline-block;
+                width: 24px;
+                height: 24px;
+                background: #ddd;
+                color: #666;
+                border-radius: 50%;
+                text-align: center;
+                line-height: 24px;
+                font-size: 0.75em;
+                font-weight: bold;
+                margin-right: 10px;
+            }
+
+            /* Winner Section Layout */
+            .winner-section {
+                display: flex;
+                gap: 30px;
+                align-items: stretch;
+            }
+            .winner-main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div
+                style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                "
+            >
+                <div style="display: flex; flex-direction: column; gap: 5px">
+                    <h1 style="margin: 0">
+                        <strong>Kolping</strong>jugend LagerBuzzer
+                    </h1>
+                    <div class="status-bar">
+                        <div>
+                            <span id="broker-status-text">Broker Status:</span>
+                            <span id="mqtt-status" class="status-indicator">Verbinde...</span>
+                        </div>
+                        <div>
+                            <span id="active-devices-text">Aktive Geräte:</span>
+                            <span id="total-buzzers">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="lang-selector">
+                    <button class="lang-btn" onclick="changeLanguage('de')">
+                        🇩🇪 DE
+                    </button>
+                    <button class="lang-btn" onclick="changeLanguage('en')">
+                        🇬🇧 EN
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="container">
+            <div class="winner-section">
+                <div
+                    class="runner-ups"
+                    id="runner-ups-box"
+                    style="display: none"
+                >
+                    <div class="runner-ups-title">Pl&auml;tze</div>
+                    <ol class="runner-ups-list" id="runner-ups-list">
+                        <!-- Runner-ups will be injected here -->
+                    </ol>
+                </div>
+                <div class="winner-main">
+                    <div class="winner-display" id="winner-box">
+                        <div class="winner-title">Aktueller Gewinner</div>
+                        <div class="winner-name" id="round-winner">
+                            WARTE AUF BUZZER...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button
+                    class="btn action-reset"
+                    onclick="triggerAction('reset')"
+                    data-color="#ea5b0c"
+                >
+                    Runde Neustarten
+                </button>
+                <button
+                    class="btn action-lock"
+                    onclick="lockRoundAndDisableWinner()"
+                    data-color="#d32f2f"
+                >
+                    Sperren
+                </button>
+                <button
+                    class="btn action-enable-all"
+                    onclick="enableAllBuzzers()"
+                    data-color="#4caf50"
+                >
+                    Alle Aktivieren
+                </button>
+            </div>
+
+            <h2 class="section-title">Team Übersicht</h2>
+            <div class="grid" id="buzzers-container">
+                <!-- Buzzer Cards will be injected here -->
+            </div>
+        </div>
+
+        <script>
+            // Language translations
+            const translations = {
+                de: {
+                    title: "Kolpingjugend LagerBuzzer",
+                    waiting: "WARTE AUF BUZZER...",
+                    locked: "GESPERRT",
+                    winnerTitle: "Aktueller Gewinner",
+                    placesTitle: "Pl&auml;tze",
+                    resetRound: "Runde Neustarten",
+                    lockButton: "Sperren",
+
+                    activateAll: "Alle Aktivieren",
+                    teamOverview: "Team Übersicht",
+                    brokerStatus: "Broker Status:",
+                    activeDevices: "Aktive Geräte:",
+                    rename: "Umbenennen",
+                    disable: "🔴 Deaktivieren",
+                    enable: "🟢 Aktivieren",
+                    online: "ONLINE",
+                    offline: "OFFLINE",
+                },
+                en: {
+                    title: "Kolping Youth LagerBuzzer",
+                    waiting: "WAITING FOR BUZZER...",
+                    locked: "LOCKED",
+                    winnerTitle: "Current Winner",
+                    placesTitle: "Places",
+                    resetRound: "Reset Round",
+                    lockButton: "Lock",
+
+                    activateAll: "Activate All",
+                    teamOverview: "Team Overview",
+                    brokerStatus: "Broker Status:",
+                    activeDevices: "Active Devices:",
+                    rename: "Rename",
+                    disable: "🔴 Disable",
+                    enable: "🟢 Enable",
+                    online: "ONLINE",
+                    offline: "OFFLINE",
+                },
+            };
+
+            let currentLanguage = "de";
+
+            function changeLanguage(lang) {
+                currentLanguage = lang;
+                updateLanguage();
+                fetchSystemState();
+            }
+
+            function updateLanguage() {
+                const t = translations[currentLanguage];
+                document.querySelector("header h1").innerHTML =
+                    `<strong>Kolping</strong>${t.title.replace("Kolping", "")}`;
+
+                // Update button texts
+                const buttons = document.querySelectorAll(".btn, .btn-small");
+                buttons.forEach((btn) => {
+                    const text = btn.textContent.replace(/\s+/g, " ").trim();
+                    if (
+                        text.includes("Runde Neustarten") ||
+                        text.includes("Reset Round")
+                    ) {
+                        btn.innerHTML = t.resetRound;
+                    } else if (
+                        text.includes("Buzzer Sperren") ||
+                        text.includes("Lock Buzzers")
+                    ) {
+                        btn.innerHTML = t.lockButton;
+                    } else if (
+                        text.includes("Alle Aktivieren") ||
+                        text.includes("Activate All")
+                    ) {
+                        btn.innerHTML = t.activateAll;
+                    } else if (
+                        text.includes("Deaktivieren") ||
+                        text.includes("Disable")
+                    ) {
+                        btn.innerHTML = t.disable;
+                    } else if (
+                        text.includes("Aktivieren") ||
+                        text.includes("Enable")
+                    ) {
+                        btn.innerHTML = t.enable;
+                    }
+                });
+
+                // Update other text elements
+                document.querySelector(".winner-title") &&
+                    (document.querySelector(".winner-title").textContent =
+                        t.winnerTitle);
+                document.querySelector(".runner-ups-title") &&
+                    (document.querySelector(".runner-ups-title").textContent =
+                        t.placesTitle);
+                document.querySelector(".section-title") &&
+                    (document.querySelector(".section-title").textContent =
+                        t.teamOverview);
+                document.getElementById("broker-status-text") &&
+                    (document.getElementById("broker-status-text").textContent =
+                        t.brokerStatus);
+                document.getElementById("active-devices-text") &&
+                    (document.getElementById(
+                        "active-devices-text",
+                    ).textContent = t.activeDevices);
+            }
+
+            function getText(key) {
+                return translations[currentLanguage][key] || key;
+            }
+
+            async function fetchSystemState() {
+                try {
+                    // Fetch Stats
+                    const statsRes = await fetch("/api/stats");
+                    const stats = await statsRes.json();
+
+                    const mqttEl = document.getElementById("mqtt-status");
+                    mqttEl.innerText = stats.mqtt_connected
+                        ? getText("online")
+                        : getText("offline");
+                    mqttEl.className =
+                        "status-indicator " +
+                        (stats.mqtt_connected ? "online" : "offline");
+                    document.getElementById("total-buzzers").innerText =
+                        stats.total_buzzers;
+
+                    // Fetch Buzzers (to get the names before determining the winner text)
+                    const buzzersRes = await fetch("/api/buzzers");
+                    const buzzers = await buzzersRes.json();
+
+                    // Fetch Round Buzzes for runner-ups
+                    const buzzes = await fetchRoundBuzzes();
+
+                    // Handle Winner UI
+                    const winnerBox = document.getElementById("winner-box");
+                    const winnerNameEl =
+                        document.getElementById("round-winner");
+
+                    if (stats.round.winner && buzzers[stats.round.winner]) {
+                        winnerBox.classList.add("has-winner");
+                        const winnerBuzzer = buzzers[stats.round.winner];
+                        winnerNameEl.innerText = winnerBuzzer.name;
+
+                        // Set winner color if buzzer has a color
+                        if (winnerBuzzer.color) {
+                            winnerBox.style.borderColor = winnerBuzzer.color;
+                            winnerBox.style.boxShadow = `0 0 20px rgba(0, 0, 0, 0.2), 0 0 0 10px ${winnerBuzzer.color}40`;
+                            winnerNameEl.style.color = winnerBuzzer.color;
+                        } else {
+                            winnerBox.style.borderColor =
+                                "var(--kolping-orange)";
+                            winnerBox.style.boxShadow = "";
+                            winnerNameEl.style.color = "var(--kolping-orange)";
+                        }
+                    } else if (stats.round.locked) {
+                        winnerBox.classList.remove("has-winner");
+                        winnerNameEl.innerText = getText("locked");
+                        winnerBox.style.borderColor = "var(--kolping-orange)";
+                        winnerBox.style.boxShadow = "";
+                        winnerNameEl.style.color = "var(--kolping-black)";
+                    } else {
+                        winnerBox.classList.remove("has-winner");
+                        winnerNameEl.innerText = getText("waiting");
+                        winnerBox.style.borderColor = "";
+                        winnerBox.style.boxShadow = "";
+                        winnerNameEl.style.color = "var(--kolping-black)";
+                    }
+
+                    // Handle Runner-ups Display
+                    const runnerUpBox =
+                        document.getElementById("runner-ups-box");
+                    const runnerUpList =
+                        document.getElementById("runner-ups-list");
+
+                    if (buzzes.length > 1) {
+                        runnerUpBox.style.display = "block";
+                        runnerUpList.innerHTML = "";
+
+                        // Skip the first buzzer (the winner) and show the rest as runner-ups
+                        const runnerUps = buzzes.slice(1);
+
+                        runnerUps.forEach((buzzerId, index) => {
+                            const position = index + 2; // 2nd, 3rd, 4th, etc.
+                            const buzzer = buzzers[buzzerId];
+                            if (buzzer) {
+                                const listItem = document.createElement("li");
+                                listItem.innerHTML = `<span class="runner-up-position">${position}</span><span class="runner-up-name">${buzzer.name}</span>`;
+                                runnerUpList.appendChild(listItem);
+                            }
+                        });
+                    } else {
+                        runnerUpBox.style.display = "none";
+                    }
+
+                    // Render Buzzer Cards
+                    const container =
+                        document.getElementById("buzzers-container");
+                    container.innerHTML = "";
+
+                    Object.values(buzzers).forEach((buzzer) => {
+                        const isWinner =
+                            stats.round.winner === buzzer.client_id;
+                        const cardClass = buzzer.enabled
+                            ? "card"
+                            : "card disabled";
+
+                        container.innerHTML += `
+                        <div class="${cardClass}" ${isWinner ? 'style="border-color: #ea5b0c; background: #fff8f5;"' : ""}>
+                            <div>
+                                <div class="card-header">
+                                    <h3 style="${buzzer.color ? `color: ${buzzer.color};` : ""}">${buzzer.name}</h3>
+                                    <div style="display: flex; gap: 5px;">
+                                        <button class="icon-btn" onclick="renameBuzzer('${buzzer.client_id}', '${buzzer.name}')" title="Umbenennen">✏️</button>
+                                        <button class="icon-btn" onclick="showColorPicker('${buzzer.client_id}')" title="Farbe ändern">🎨</button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <p>ID: ${buzzer.client_id}</p>
+                                    <p>Treffer: <strong>${buzzer.buzz_count}</strong></p>
+                                </div>
+                            </div>
+                            <div class="card-actions">
+                                ${
+                                    buzzer.enabled
+                                        ? `<button class="btn-small btn-disable" onclick="toggleBuzzer('${buzzer.client_id}', false)">${getText("disable")}</button>`
+                                        : `<button class="btn-small btn-enable" onclick="toggleBuzzer('${buzzer.client_id}', true)">${getText("enable")}</button>`
+                                }
+                            </div>
+                        </div>
+                    `;
+                    });
+                } catch (err) {
+                    console.error("Fehler beim Laden der Daten:", err);
+                }
+            }
+
+            async function triggerAction(actionName) {
+                await fetch("/api/round", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: actionName }),
+                });
+                fetchSystemState();
+            }
+
+            async function enableAllBuzzers() {
+                await fetch("/api/buzzers/enable_all", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                });
+                fetchSystemState();
+            }
+
+            async function lockRoundAndDisableWinner() {
+                // First lock the round
+                await fetch("/api/round", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "lock" }),
+                });
+
+                // Then get the current winner and disable them
+                const statsRes = await fetch("/api/stats");
+                const stats = await statsRes.json();
+
+                if (stats.round.winner) {
+                    await fetch("/api/buzzers/" + stats.round.winner, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ enabled: false }),
+                    });
+                }
+
+                fetchSystemState();
+            }
+
+            async function fetchRoundBuzzes() {
+                try {
+                    const response = await fetch("/api/round/buzzes");
+                    const data = await response.json();
+                    return data.buzzes || [];
+                } catch (err) {
+                    console.error("Fehler beim Laden der Buzzes:", err);
+                    return [];
+                }
+            }
+
+            function showColorPicker(clientId) {
+                const color = prompt(
+                    "Farbe als Hex-Code eingeben (z.B. #ff0000 oder rot):",
+                    "",
+                );
+                if (color && color.trim() !== "") {
+                    setBuzzerColor(clientId, color.trim());
+                }
+            }
+
+            async function setBuzzerColor(clientId, color) {
+                // Validate color
+                const tempDiv = document.createElement("div");
+                tempDiv.style.color = color;
+                if (tempDiv.style.color) {
+                    await fetch("/api/buzzers/" + clientId, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ color: color }),
+                    });
+                    fetchSystemState();
+                } else {
+                    alert(
+                        "Ungültige Farbe! Bitte einen gültigen Hex-Code oder Farbname eingeben.",
+                    );
+                }
+            }
+
+            async function renameBuzzer(clientId, currentName) {
+                // Using prompt prevents the live-refresh from deleting the user's input while they type
+                const newName = prompt(
+                    "Neuen Team-Namen eingeben:",
+                    currentName,
+                );
+                if (
+                    newName &&
+                    newName.trim() !== "" &&
+                    newName !== currentName
+                ) {
+                    await fetch("/api/buzzers/" + clientId, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ name: newName.trim() }),
+                    });
+                    fetchSystemState();
+                }
+            }
+
+            async function toggleBuzzer(clientId, targetState) {
+                await fetch("/api/buzzers/" + clientId, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ enabled: targetState }),
+                });
+                fetchSystemState();
+            }
+
+            // Poll every 500ms
+            setInterval(fetchSystemState, 500);
+            window.onload = fetchSystemState;
+        </script>
+    </body>
+</html>

@@ -1,18 +1,18 @@
-# Lager Buzzer
+# LagerBuzzer
 
-A wireless buzzer system for quiz nights and bar games built on ESP8266 (D1 Mini) using ESP-NOW for low-latency peer-to-peer communication.
+A wireless buzzer system for quiz nights and bar games. Buzzers connect via MQTT to a central server running on a computer.
 
 ## Hardware
 
-- **Controller** — 1× Wemos D1 Mini (manages game state, receives buzzer presses)
 - **Buzzers** — N× Wemos D1 Mini (each has a physical button, identified by a unique ID)
+- **Server** — Any computer running the Python MQTT server (Raspberry Pi, laptop, etc.)
 
 ## Project Structure
 
 ```
 firmware/
-  controller/   PlatformIO project for the controller device
   buzzer/       PlatformIO project for the buzzer devices
+server/        Python web server and MQTT broker interface
 Makefile        Build, upload, and monitor automation
 device_macs.mk  Local machine config (MACs + IDs) — not committed
 ```
@@ -21,6 +21,8 @@ device_macs.mk  Local machine config (MACs + IDs) — not committed
 
 - [uv](https://docs.astral.sh/uv/) — used to run `esptool` without a manual install
 - [PlatformIO CLI](https://docs.platformio.org/en/latest/core/) (`pio`) — for building and uploading firmware
+- [Mosquitto MQTT Broker](https://mosquitto.org/) or any MQTT broker
+- Python 3.10+ for the server
 - Linux: add your user to the `dialout` group for serial port access
 
 ```sh
@@ -31,15 +33,29 @@ newgrp dialout
 
 ## Configuration
 
+### 1. device_macs.mk
+
 Create a `device_macs.mk` file in the project root (it is gitignored — never commit device MACs):
 
 ```make
-CONTROLLER_MAC := aa:bb:cc:11:22:33
-BUZZER_MACS    := aa:bb:cc:11:22:33 aa:bb:cc:11:22:33 aa:bb:cc:11:22:33
-BUZZER_IDS     := 101 102 103
+BUZZER_MACS    := aa:bb:cc:11:22:33 11:22:33:44:55:66
+BUZZER_IDS     := 101 102
 ```
 
 `BUZZER_MACS` and `BUZZER_IDS` are parallel lists — element N of `BUZZER_IDS` maps to element N of `BUZZER_MACS`.
+
+### 2. Server Configuration
+
+The server can be configured via environment variables:
+
+```sh
+# MQTT Broker settings (default: localhost:1883)
+export MQTT_BROKER=localhost
+export MQTT_PORT=1883
+
+# Web server port (default: 5000)
+export WEB_PORT=5000
+```
 
 ### Finding device MACs
 
@@ -51,31 +67,45 @@ make scan
 
 This prints the raw `esptool read_mac` output for every connected serial port.
 
-You can also target a specific MAC or ID:
+You can also target a specific MAC:
 
 ```sh
 make find-port MAC=24:a1:60:2e:d1:47
-make lookup-buzzer-mac BUZZER_DEVICE_ID=101
 ```
 
 ## Usage
 
+### Buzzer Firmware
+
 ```sh
 # Build
-make controller-build
 make buzzer-build BUZZER_DEVICE_ID=101
 
 # Upload (automatically finds the right port by MAC)
-make controller-upload
 make buzzer-upload BUZZER_DEVICE_ID=101
 
 # Serial monitor
-make controller-monitor
 make buzzer-monitor BUZZER_DEVICE_ID=101
 
 # Clean build artifacts
 make clean
 ```
+
+### Running the Server
+
+```sh
+# Install dependencies
+cd server
+pip install -r requirements.txt
+
+# Start the web server (automatically connects to MQTT)
+python webserver/app.py
+
+# Or with custom MQTT broker
+MQTT_BROKER=192.168.1.100 python webserver/app.py
+```
+
+The web interface will be available at `http://localhost:5000`
 
 ## How it works
 
@@ -85,7 +115,19 @@ make clean
    - Builds the firmware with `-DDEVICE_ID=101` injected as a compile-time flag
    - Uploads to the matched port
 
-2. The controller is uploaded the same way, matched by `CONTROLLER_MAC`.
+2. Buzzers connect to the MQTT broker and publish to the `lagerbuzzer/buzz` topic
+
+3. The server subscribes to the MQTT topic, tracks buzzes, and displays them on the web interface
+
+4. The web interface allows you to:
+   - See all connected buzzers
+   - View the current winner
+   - See runner-ups in order
+   - Enable/disable buzzers
+   - Rename teams
+   - Set team colors
+   - Reset rounds
+   - Lock buzzers
 
 ## License
 
