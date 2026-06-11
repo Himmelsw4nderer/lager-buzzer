@@ -10,7 +10,7 @@ services:
       - ./mosquitto/log:/mosquitto/log
       - ./mosquitto/config:/mosquitto/config
     restart: unless-stopped
-
+    network_mode: host
   timesync:
     build: ./timesync
     container_name: timesync_publisher
@@ -22,7 +22,7 @@ services:
     depends_on:
       - mosquitto
     restart: unless-stopped
-
+    network_mode: host
   webserver:
     build: ./webserver
     container_name: webserver
@@ -36,3 +36,4 @@ services:
     depends_on:
       - mosquitto
     restart: unless-stopped
+    network_mode: host
