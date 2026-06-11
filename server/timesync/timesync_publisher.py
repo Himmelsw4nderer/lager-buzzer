@@ -18,7 +18,7 @@ import paho.mqtt.client as mqtt
 MQTT_BROKER = os.getenv("MQTT_BROKER", "mosquitto")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_TOPIC = os.getenv("MQTT_TOPIC", "lagerbuzzer/time_sync")
-INTERVAL_MS = int(os.getenv("INTERVAL_MS", 5000))  # 5 seconds default
+INTERVAL_MS = int(os.getenv("INTERVAL_MS", 2000))  # 2 seconds default
 
 logging.basicConfig(
     level=logging.INFO,
