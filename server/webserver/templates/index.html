@@ -236,6 +236,26 @@
                 color: #d32f2f;
             }
 
+            /* Language Selector */
+            .lang-selector {
+                display: flex;
+                gap: 8px;
+                margin-left: 20px;
+            }
+            .lang-btn {
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                color: white;
+                padding: 6px 12px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 0.9em;
+                transition: all 0.2s;
+            }
+            .lang-btn:hover {
+                background: rgba(255, 255, 255, 0.3);
+            }
+
             /* Runner-ups Display */
             .runner-ups {
                 background: var(--card-bg);
@@ -299,18 +319,35 @@
     </head>
     <body>
         <header>
-            <h1><strong>Kolping</strong>jugend LagerBuzzer</h1>
+            <div
+                style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                "
+            >
+                <h1 style="margin: 0">
+                    <strong>Kolping</strong>jugend LagerBuzzer
+                </h1>
+                <div class="lang-selector">
+                    <button class="lang-btn" onclick="changeLanguage('de')">
+                        🇩🇪 DE
+                    </button>
+                    <button class="lang-btn" onclick="changeLanguage('en')">
+                        🇬🇧 EN
+                    </button>
+                </div>
+            </div>
         </header>
 
         <div class="container">
             <div class="status-bar">
-                <span
-                    >Broker Status:
-                    <span id="mqtt-status" class="status-indicator"
-                        >Verbinde...</span
-                    ></span
+                <span id="broker-status-text">Broker Status:</span>
+                <span id="mqtt-status" class="status-indicator"
+                    >Verbinde...</span
                 >
-                <span>Aktive Geräte: <span id="total-buzzers">0</span></span>
+                <span id="active-devices-text">Aktive Geräte:</span>
+                <span id="total-buzzers">0</span>
             </div>
 
             <div class="winner-section">
@@ -365,6 +402,121 @@
         </div>
 
         <script>
+            // Language translations
+            const translations = {
+                de: {
+                    title: "Kolpingjugend LagerBuzzer",
+                    waiting: "WARTE AUF BUZZER...",
+                    locked: "GESPERRT",
+                    winnerTitle: "Aktueller Gewinner",
+                    placesTitle: "Pl&auml;tze",
+                    resetRound: "Runde Neustarten",
+                    lockBuzzers: "Buzzer Sperren",
+                    clearWinner: "Gewinner Zur&uuml;cksetzen",
+                    activateAll: "Alle Aktivieren",
+                    teamOverview: "Team Übersicht",
+                    brokerStatus: "Broker Status:",
+                    activeDevices: "Aktive Geräte:",
+                    rename: "Umbenennen",
+                    disable: "🔴 Deaktivieren",
+                    enable: "🟢 Aktivieren",
+                    online: "ONLINE",
+                    offline: "OFFLINE",
+                },
+                en: {
+                    title: "Kolping Youth LagerBuzzer",
+                    waiting: "WAITING FOR BUZZER...",
+                    locked: "LOCKED",
+                    winnerTitle: "Current Winner",
+                    placesTitle: "Places",
+                    resetRound: "Reset Round",
+                    lockBuzzers: "Lock Buzzers",
+                    clearWinner: "Clear Winner",
+                    activateAll: "Activate All",
+                    teamOverview: "Team Overview",
+                    brokerStatus: "Broker Status:",
+                    activeDevices: "Active Devices:",
+                    rename: "Rename",
+                    disable: "🔴 Disable",
+                    enable: "🟢 Enable",
+                    online: "ONLINE",
+                    offline: "OFFLINE",
+                },
+            };
+
+            let currentLanguage = "de";
+
+            function changeLanguage(lang) {
+                currentLanguage = lang;
+                updateLanguage();
+                fetchSystemState();
+            }
+
+            function updateLanguage() {
+                const t = translations[currentLanguage];
+                document.querySelector("header h1").innerHTML =
+                    `<strong>Kolping</strong>${t.title.replace("Kolping", "")}`;
+
+                // Update button texts
+                const buttons = document.querySelectorAll(".btn, .btn-small");
+                buttons.forEach((btn) => {
+                    const text = btn.textContent.replace(/\s+/g, " ").trim();
+                    if (
+                        text.includes("Runde Neustarten") ||
+                        text.includes("Reset Round")
+                    ) {
+                        btn.innerHTML = t.resetRound;
+                    } else if (
+                        text.includes("Buzzer Sperren") ||
+                        text.includes("Lock Buzzers")
+                    ) {
+                        btn.innerHTML = t.lockBuzzers;
+                    } else if (
+                        (text.includes("Gewinner") && text.includes("Zur")) ||
+                        text.includes("Clear Winner")
+                    ) {
+                        btn.innerHTML = t.clearWinner;
+                    } else if (
+                        text.includes("Alle Aktivieren") ||
+                        text.includes("Activate All")
+                    ) {
+                        btn.innerHTML = t.activateAll;
+                    } else if (
+                        text.includes("Deaktivieren") ||
+                        text.includes("Disable")
+                    ) {
+                        btn.innerHTML = t.disable;
+                    } else if (
+                        text.includes("Aktivieren") ||
+                        text.includes("Enable")
+                    ) {
+                        btn.innerHTML = t.enable;
+                    }
+                });
+
+                // Update other text elements
+                document.querySelector(".winner-title") &&
+                    (document.querySelector(".winner-title").textContent =
+                        t.winnerTitle);
+                document.querySelector(".runner-ups-title") &&
+                    (document.querySelector(".runner-ups-title").textContent =
+                        t.placesTitle);
+                document.querySelector(".section-title") &&
+                    (document.querySelector(".section-title").textContent =
+                        t.teamOverview);
+                document.getElementById("broker-status-text") &&
+                    (document.getElementById("broker-status-text").textContent =
+                        t.brokerStatus);
+                document.getElementById("active-devices-text") &&
+                    (document.getElementById(
+                        "active-devices-text",
+                    ).textContent = t.activeDevices);
+            }
+
+            function getText(key) {
+                return translations[currentLanguage][key] || key;
+            }
+
             async function fetchSystemState() {
                 try {
                     // Fetch Stats
@@ -373,8 +525,8 @@
 
                     const mqttEl = document.getElementById("mqtt-status");
                     mqttEl.innerText = stats.mqtt_connected
-                        ? "ONLINE"
-                        : "OFFLINE";
+                        ? getText("online")
+                        : getText("offline");
                     mqttEl.className =
                         "status-indicator " +
                         (stats.mqtt_connected ? "online" : "offline");
@@ -399,10 +551,10 @@
                             buzzers[stats.round.winner].name;
                     } else if (stats.round.locked) {
                         winnerBox.classList.remove("has-winner");
-                        winnerNameEl.innerText = "GESPERRT";
+                        winnerNameEl.innerText = getText("locked");
                     } else {
                         winnerBox.classList.remove("has-winner");
-                        winnerNameEl.innerText = "WARTE AUF BUZZER...";
+                        winnerNameEl.innerText = getText("waiting");
                     }
 
                     // Handle Runner-ups Display
