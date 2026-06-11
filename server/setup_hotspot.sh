@@ -6,8 +6,8 @@ set -e
 # ==========================================
 # CONFIGURATION - CHANGE THESE TO YOUR LIKING
 # ==========================================
-HOTSPOT_SSID="ESP_Dev_Network"
-HOTSPOT_PASS="YourSecurePassword"
+HOTSPOT_SSID="lagerbuzzer"
+HOTSPOT_PASS="lagerbuzzer"
 REPO_URL="https://github.com/Himmelsw4nderer/lager-buzzer.git"
 TARGET_DIR="$HOME/lager-buzzer"
 
