@@ -4,7 +4,7 @@
 #include <BuzzSync.h>
 
 // MQTT Configuration - update these for your environment
-const char* MQTT_SERVER = "192.168.1.100";  // Your MQTT broker IP or hostname
+const char* MQTT_SERVER = "192.168.4.1";
 const uint16_t MQTT_PORT = 1883;
 const char* MQTT_USER = nullptr;           // Set if your broker requires authentication
 const char* MQTT_PASSWORD = nullptr;       // Set if your broker requires authentication

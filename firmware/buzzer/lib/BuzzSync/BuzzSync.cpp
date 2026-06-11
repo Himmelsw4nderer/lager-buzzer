@@ -21,10 +21,6 @@ void BuzzSync::begin(const char* mqttServer, uint16_t mqttPort,
     _clientId = clientId;
     _syncTimeoutMs = syncTimeoutMs;
 
-    // Setup WiFi
-    WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
-
     // Setup MQTT client
     _mqttClient.setServer(_mqttServer, _mqttPort);
     _instance = this;
