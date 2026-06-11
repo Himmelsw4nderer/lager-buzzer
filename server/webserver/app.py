@@ -39,6 +39,7 @@ class Buzzer:
         self.enabled = True  # Used to lock out wrong answers
         self.last_buzz_time = None
         self.buzz_count = 0
+        self.color = None  # Custom color for this buzzer
 
     def to_dict(self):
         return {
@@ -47,6 +48,7 @@ class Buzzer:
             "name": self.name,
             "enabled": self.enabled,
             "buzz_count": self.buzz_count,
+            "color": self.color,
         }
 
 
@@ -213,6 +215,8 @@ def update_buzzer(client_id):
                 buzzers[client_id].name = data["name"]
             if "enabled" in data:
                 buzzers[client_id].enabled = bool(data["enabled"])
+            if "color" in data:
+                buzzers[client_id].color = data["color"]
             return jsonify(buzzers[client_id].to_dict())
     return jsonify({"error": "Buzzer nicht gefunden"}), 404
 

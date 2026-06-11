@@ -101,6 +101,7 @@
                 gap: 15px;
                 margin-bottom: 40px;
                 justify-content: center;
+                flex-wrap: wrap;
             }
             .btn {
                 padding: 15px 30px;
@@ -112,24 +113,50 @@
                 text-transform: uppercase;
                 transition:
                     transform 0.1s,
-                    opacity 0.2s;
+                    opacity 0.2s,
+                    box-shadow 0.2s;
+                position: relative;
+                overflow: hidden;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
             }
             .btn:active {
                 transform: scale(0.97);
             }
-            .btn-primary {
-                background: var(--kolping-orange);
+            .btn::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(
+                    180deg,
+                    rgba(255, 255, 255, 0.2) 0%,
+                    rgba(255, 255, 255, 0) 100%
+                );
+                opacity: 0;
+                transition: opacity 0.2s;
+            }
+            .btn:hover::before {
+                opacity: 1;
+            }
+            .btn[data-color] {
+                background: var(--btn-color, #666);
                 color: white;
             }
-            .btn-primary:hover {
-                background: #d04d0a;
+            .btn[data-color]:hover {
+                filter: brightness(1.1);
             }
-            .btn-secondary {
-                background: var(--kolping-black);
-                color: white;
+
+            /* Button color classes */
+            .action-reset {
+                --btn-color: #ea5b0c;
             }
-            .btn-secondary:hover {
-                background: #333;
+            .action-lock {
+                --btn-color: #d32f2f;
+            }
+            .action-enable-all {
+                --btn-color: #4caf50;
             }
 
             /* Buzzer Grid */
@@ -195,6 +222,16 @@
                 margin-top: 20px;
                 display: flex;
                 gap: 10px;
+            }
+
+            /* Color indicator for buzzer cards */
+            .card-header h3 {
+                transition: color 0.2s;
+            }
+
+            /* Color picker button */
+            .icon-btn[title="Farbe ändern"] {
+                font-size: 1.3em;
             }
             .btn-small {
                 padding: 8px 12px;
@@ -373,24 +410,24 @@
 
             <div class="controls">
                 <button
-                    class="btn btn-primary"
+                    class="btn action-reset"
                     onclick="triggerAction('reset')"
+                    data-color="#ea5b0c"
                 >
                     Runde Neustarten
                 </button>
                 <button
-                    class="btn btn-secondary"
-                    onclick="triggerAction('lock')"
+                    class="btn action-lock"
+                    onclick="lockRoundAndDisableWinner()"
+                    data-color="#d32f2f"
                 >
-                    Buzzer Sperren
+                    Sperren
                 </button>
                 <button
-                    class="btn btn-secondary"
-                    onclick="triggerAction('clear_winner')"
+                    class="btn action-enable-all"
+                    onclick="enableAllBuzzers()"
+                    data-color="#4caf50"
                 >
-                    Gewinner Zur&uuml;cksetzen
-                </button>
-                <button class="btn btn-primary" onclick="enableAllBuzzers()">
                     Alle Aktivieren
                 </button>
             </div>
@@ -411,8 +448,8 @@
                     winnerTitle: "Aktueller Gewinner",
                     placesTitle: "Pl&auml;tze",
                     resetRound: "Runde Neustarten",
-                    lockBuzzers: "Buzzer Sperren",
-                    clearWinner: "Gewinner Zur&uuml;cksetzen",
+                    lockButton: "Sperren",
+
                     activateAll: "Alle Aktivieren",
                     teamOverview: "Team Übersicht",
                     brokerStatus: "Broker Status:",
@@ -430,8 +467,8 @@
                     winnerTitle: "Current Winner",
                     placesTitle: "Places",
                     resetRound: "Reset Round",
-                    lockBuzzers: "Lock Buzzers",
-                    clearWinner: "Clear Winner",
+                    lockButton: "Lock",
+
                     activateAll: "Activate All",
                     teamOverview: "Team Overview",
                     brokerStatus: "Broker Status:",
@@ -470,12 +507,7 @@
                         text.includes("Buzzer Sperren") ||
                         text.includes("Lock Buzzers")
                     ) {
-                        btn.innerHTML = t.lockBuzzers;
-                    } else if (
-                        (text.includes("Gewinner") && text.includes("Zur")) ||
-                        text.includes("Clear Winner")
-                    ) {
-                        btn.innerHTML = t.clearWinner;
+                        btn.innerHTML = t.lockButton;
                     } else if (
                         text.includes("Alle Aktivieren") ||
                         text.includes("Activate All")
@@ -547,14 +579,32 @@
 
                     if (stats.round.winner && buzzers[stats.round.winner]) {
                         winnerBox.classList.add("has-winner");
-                        winnerNameEl.innerText =
-                            buzzers[stats.round.winner].name;
+                        const winnerBuzzer = buzzers[stats.round.winner];
+                        winnerNameEl.innerText = winnerBuzzer.name;
+
+                        // Set winner color if buzzer has a color
+                        if (winnerBuzzer.color) {
+                            winnerBox.style.borderColor = winnerBuzzer.color;
+                            winnerBox.style.boxShadow = `0 0 20px rgba(0, 0, 0, 0.2), 0 0 0 10px ${winnerBuzzer.color}40`;
+                            winnerNameEl.style.color = winnerBuzzer.color;
+                        } else {
+                            winnerBox.style.borderColor =
+                                "var(--kolping-orange)";
+                            winnerBox.style.boxShadow = "";
+                            winnerNameEl.style.color = "var(--kolping-orange)";
+                        }
                     } else if (stats.round.locked) {
                         winnerBox.classList.remove("has-winner");
                         winnerNameEl.innerText = getText("locked");
+                        winnerBox.style.borderColor = "var(--kolping-orange)";
+                        winnerBox.style.boxShadow = "";
+                        winnerNameEl.style.color = "var(--kolping-black)";
                     } else {
                         winnerBox.classList.remove("has-winner");
                         winnerNameEl.innerText = getText("waiting");
+                        winnerBox.style.borderColor = "";
+                        winnerBox.style.boxShadow = "";
+                        winnerNameEl.style.color = "var(--kolping-black)";
                     }
 
                     // Handle Runner-ups Display
@@ -599,8 +649,11 @@
                         <div class="${cardClass}" ${isWinner ? 'style="border-color: #ea5b0c; background: #fff8f5;"' : ""}>
                             <div>
                                 <div class="card-header">
-                                    <h3>${buzzer.name}</h3>
-                                    <button class="icon-btn" onclick="renameBuzzer('${buzzer.client_id}', '${buzzer.name}')" title="Umbenennen">✏️</button>
+                                    <h3 style="${buzzer.color ? `color: ${buzzer.color};` : ""}">${buzzer.name}</h3>
+                                    <div style="display: flex; gap: 5px;">
+                                        <button class="icon-btn" onclick="renameBuzzer('${buzzer.client_id}', '${buzzer.name}')" title="Umbenennen">✏️</button>
+                                        <button class="icon-btn" onclick="showColorPicker('${buzzer.client_id}')" title="Farbe ändern">🎨</button>
+                                    </div>
                                 </div>
                                 <div class="card-body">
                                     <p>ID: ${buzzer.client_id}</p>
@@ -610,8 +663,8 @@
                             <div class="card-actions">
                                 ${
                                     buzzer.enabled
-                                        ? `<button class="btn-small btn-disable" onclick="toggleBuzzer('${buzzer.client_id}', false)">🔴 Deaktivieren</button>`
-                                        : `<button class="btn-small btn-enable" onclick="toggleBuzzer('${buzzer.client_id}', true)">🟢 Aktivieren</button>`
+                                        ? `<button class="btn-small btn-disable" onclick="toggleBuzzer('${buzzer.client_id}', false)">${getText("disable")}</button>`
+                                        : `<button class="btn-small btn-enable" onclick="toggleBuzzer('${buzzer.client_id}', true)">${getText("enable")}</button>`
                                 }
                             </div>
                         </div>
@@ -639,6 +692,29 @@
                 fetchSystemState();
             }
 
+            async function lockRoundAndDisableWinner() {
+                // First lock the round
+                await fetch("/api/round", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "lock" }),
+                });
+
+                // Then get the current winner and disable them
+                const statsRes = await fetch("/api/stats");
+                const stats = await statsRes.json();
+
+                if (stats.round.winner) {
+                    await fetch("/api/buzzers/" + stats.round.winner, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ enabled: false }),
+                    });
+                }
+
+                fetchSystemState();
+            }
+
             async function fetchRoundBuzzes() {
                 try {
                     const response = await fetch("/api/round/buzzes");
@@ -647,6 +723,34 @@
                 } catch (err) {
                     console.error("Fehler beim Laden der Buzzes:", err);
                     return [];
+                }
+            }
+
+            function showColorPicker(clientId) {
+                const color = prompt(
+                    "Farbe als Hex-Code eingeben (z.B. #ff0000 oder rot):",
+                    "",
+                );
+                if (color && color.trim() !== "") {
+                    setBuzzerColor(clientId, color.trim());
+                }
+            }
+
+            async function setBuzzerColor(clientId, color) {
+                // Validate color
+                const tempDiv = document.createElement("div");
+                tempDiv.style.color = color;
+                if (tempDiv.style.color) {
+                    await fetch("/api/buzzers/" + clientId, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ color: color }),
+                    });
+                    fetchSystemState();
+                } else {
+                    alert(
+                        "Ungültige Farbe! Bitte einen gültigen Hex-Code oder Farbname eingeben.",
+                    );
                 }
             }
 
