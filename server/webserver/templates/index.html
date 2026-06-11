@@ -1,1247 +1,249 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LagerBuzzer - Management System</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #1a1a2e;
-            color: #e0e0e0;
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        header {
-            text-align: center;
-            padding: 20px 0;
-            border-bottom: 2px solid #16213e;
-            margin-bottom: 30px;
-        }
-        h1 {
-            color: #0f3460;
-            font-size: 2.5em;
-            background: linear-gradient(90deg, #0f3460, #e94560);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 10px;
-        }
-        .subtitle {
-            color: #0f3460;
-            font-size: 1.1em;
-        }
-        
-        /* Tab Navigation */
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #0f3460;
-            padding-bottom: 10px;
-        }
-        .tab {
-            padding: 12px 24px;
-            background: #16213e;
-            border: 1px solid #0f3460;
-            border-radius: 8px 8px 0 0;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: bold;
-        }
-        .tab:hover {
-            background: #0f3460;
-        }
-        .tab.active {
-            background: #e94560;
-            color: white;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        
-        /* Stats Cards */
-        .stats {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-        .stat-card {
-            background: #16213e;
-            padding: 15px 25px;
-            border-radius: 10px;
-            border: 1px solid #0f3460;
-            min-width: 150px;
-            flex: 1;
-        }
-        .stat-card .label {
-            font-size: 0.9em;
-            color: #0f3460;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-        }
-        .stat-card .value {
-            font-size: 1.8em;
-            font-weight: bold;
-            color: #e94560;
-        }
-        .stat-card .subvalue {
-            font-size: 0.8em;
-            color: #00ff88;
-            margin-top: 5px;
-        }
-        
-        .mqtt-status {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: bold;
-        }
-        .mqtt-connected {
-            background: #00ff88;
-            color: #000;
-        }
-        .mqtt-disconnected {
-            background: #ff4444;
-            color: #fff;
-        }
-        
-        /* Round Controls */
-        .round-controls {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: bold;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .btn-primary {
-            background: #e94560;
-            color: white;
-        }
-        .btn-primary:hover {
-            background: #c81e45;
-        }
-        .btn-success {
-            background: #00ff88;
-            color: #000;
-        }
-        .btn-success:hover {
-            background: #00cc6a;
-        }
-        .btn-warning {
-            background: #ffcc00;
-            color: #000;
-        }
-        .btn-warning:hover {
-            background: #e6b800;
-        }
-        .btn-danger {
-            background: #ff4444;
-            color: white;
-        }
-        .btn-danger:hover {
-            background: #cc3333;
-        }
-        .btn-secondary {
-            background: #16213e;
-            color: #e0e0e0;
-            border: 1px solid #0f3460;
-        }
-        .btn-secondary:hover {
-            background: #0f3460;
-        }
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* Winner Display */
-        .winner-display {
-            background: linear-gradient(135deg, #16213e, #0f3460);
-            padding: 30px;
-            border-radius: 15px;
-            border: 2px solid #e94560;
-            text-align: center;
-            margin-bottom: 30px;
-            position: relative;
-            overflow: hidden;
-        }
-        .winner-display::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(233,69,96,0.1) 0%, transparent 70%);
-            animation: pulse 3s ease-in-out infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: rotate(0deg); }
-            50% { transform: rotate(180deg); }
-        }
-        .winner-label {
-            font-size: 1.2em;
-            color: #0f3460;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        .winner-name {
-            font-size: 3em;
-            font-weight: bold;
-            color: #00ff88;
-            text-shadow: 0 0 20px rgba(0,255,136,0.5);
-            margin-bottom: 10px;
-        }
-        .winner-info {
-            font-size: 1.1em;
-            color: #e0e0e0;
-        }
-        .no-winner {
-            color: #0f3460;
-            font-style: italic;
-        }
-        
-        /* Buzzers List */
-        .buzzers-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .buzzer-card {
-            background: #16213e;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #0f3460;
-            transition: all 0.3s;
-        }
-        .buzzer-card:hover {
-            border-color: #e94560;
-            box-shadow: 0 0 15px rgba(233,69,96,0.3);
-        }
-        .buzzer-card.locked {
-            opacity: 0.7;
-            border-style: dashed;
-        }
-        .buzzer-card:not(.enabled) {
-            opacity: 0.5;
-        }
-        .buzzer-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .buzzer-name {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #00ff88;
-        }
-        .buzzer-id {
-            font-size: 0.8em;
-            color: #0f3460;
-        }
-        .buzzer-status {
-            display: flex;
-            gap: 10px;
-        }
-        .status-badge {
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            font-weight: bold;
-        }
-        .status-enabled {
-            background: #00ff88;
-            color: #000;
-        }
-        .status-disabled {
-            background: #ff4444;
-            color: #fff;
-        }
-        .status-locked {
-            background: #ffcc00;
-            color: #000;
-        }
-        .buzzer-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-        }
-        .stat-label {
-            color: #0f3460;
-            font-size: 0.85em;
-        }
-        .stat-value {
-            color: #e94560;
-            font-weight: bold;
-        }
-        .buzzer-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 15px;
-            flex-wrap: wrap;
-        }
-        .buzzer-actions .btn {
-            padding: 8px 12px;
-            font-size: 0.85em;
-        }
-        
-        /* Events List */
-        .events-container {
-            background: #16213e;
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid #0f3460;
-        }
-        .event-list {
-            max-height: 600px;
-            overflow-y: auto;
-        }
-        .event-card {
-            background: #1a1a2e;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            border-left: 4px solid #e94560;
-            animation: fadeIn 0.3s ease-in;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .event-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 0.85em;
-            color: #0f3460;
-        }
-        .event-body {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 10px;
-        }
-        .field {
-            background: #0f3460;
-            padding: 8px 12px;
-            border-radius: 5px;
-            font-size: 0.9em;
-        }
-        .field-label {
-            color: #e94560;
-            font-weight: bold;
-            font-size: 0.8em;
-            margin-bottom: 3px;
-            display: block;
-        }
-        .field-value {
-            color: #fff;
-        }
-        .timestamp {
-            color: #00ff88;
-            font-size: 0.85em;
-        }
-        .buzzer-tag {
-            background: #e94560;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            font-weight: bold;
-        }
-        
-        /* Form Inputs */
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-label {
-            display: block;
-            margin-bottom: 5px;
-            color: #e0e0e0;
-            font-weight: bold;
-        }
-        .form-input {
-            width: 100%;
-            padding: 10px 12px;
-            background: #0f3460;
-            border: 1px solid #16213e;
-            border-radius: 6px;
-            color: #fff;
-            font-size: 1em;
-        }
-        .form-input:focus {
-            outline: none;
-            border-color: #e94560;
-        }
-        
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal.active {
-            display: flex;
-        }
-        .modal-content {
-            background: #16213e;
-            padding: 30px;
-            border-radius: 15px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .modal-close {
-            background: none;
-            border: none;
-            color: #e94560;
-            font-size: 2em;
-            cursor: pointer;
-            line-height: 1;
-        }
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            margin-top: 20px;
-        }
-        
-        /* Table */
-        .table-container {
-            overflow-x: auto;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #16213e;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #0f3460;
-        }
-        th {
-            background: #0f3460;
-            color: #00ff88;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 0.85em;
-            letter-spacing: 1px;
-        }
-        tr:hover {
-            background: #1a1a2e;
-        }
-        
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #0f3460;
-        }
-        
-        /* Loading */
-        .loading {
-            color: #e94560;
-            font-style: italic;
-        }
-        
-        /* Tooltip */
-        .tooltip {
-            position: relative;
-        }
-        .tooltip::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 8px 12px;
-            background: #000;
-            color: #fff;
-            border-radius: 4px;
-            font-size: 0.8em;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s;
-        }
-        .tooltip:hover::after {
-            opacity: 1;
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>LagerBuzzer - Management System</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                background: #1a1a2e;
+                color: #e0e0e0;
+                min-height: 100vh;
+                padding: 20px;
+            }
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+            header {
+                text-align: center;
+                padding: 20px 0;
+                border-bottom: 2px solid #16213e;
+                margin-bottom: 30px;
+            }
+            h1 {
+                background: linear-gradient(90deg, #00ff88, #e94560);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                font-size: 2.5em;
+            }
+
             .stats {
-                flex-direction: column;
+                display: flex;
+                gap: 20px;
+                margin-bottom: 30px;
+                flex-wrap: wrap;
             }
             .stat-card {
-                width: 100%;
+                background: #16213e;
+                padding: 15px 25px;
+                border-radius: 10px;
+                border: 1px solid #0f3460;
+                flex: 1;
+                min-width: 200px;
             }
-            .buzzers-grid {
-                grid-template-columns: 1fr;
+            .stat-card .label {
+                font-size: 0.9em;
+                color: #888;
+                text-transform: uppercase;
             }
-            .event-body {
-                grid-template-columns: 1fr;
+            .stat-card .value {
+                font-size: 1.8em;
+                font-weight: bold;
+                color: #e94560;
             }
-            .round-controls {
-                flex-direction: column;
-            }
-            .btn {
-                width: 100%;
+
+            .winner-display {
+                background: linear-gradient(135deg, #16213e, #0f3460);
+                padding: 30px;
+                border-radius: 15px;
+                border: 2px solid #e94560;
+                text-align: center;
+                margin-bottom: 30px;
             }
             .winner-name {
-                font-size: 2em;
+                font-size: 3.5em;
+                font-weight: bold;
+                color: #00ff88;
+                text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
             }
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>LagerBuzzer</h1>
-        <p class="subtitle">Complete Buzzer Management System</p>
-    </header>
 
-    <div class="container">
-        <!-- Stats Bar -->
-        <div class="stats">
-            <div class="stat-card">
-                <div class="label">Total Events</div>
-                <div class="value" id="totalEvents">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Total Buzzers</div>
-                <div class="value" id="totalBuzzers">0</div>
-                <div class="subvalue">Enabled: <span id="enabledBuzzers">0</span></div>
-            </div>
-            <div class="stat-card">
-                <div class="label">MQTT Status</div>
-                <div class="value">
-                    <span id="mqttStatus" class="mqtt-status mqtt-disconnected">Disconnected</span>
+            .round-controls {
+                display: flex;
+                gap: 15px;
+                margin-bottom: 30px;
+            }
+            .btn {
+                padding: 12px 24px;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: bold;
+                font-size: 1em;
+            }
+            .btn-primary {
+                background: #e94560;
+                color: white;
+            }
+            .btn-secondary {
+                background: #0f3460;
+                color: white;
+            }
+
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 20px;
+            }
+            .card {
+                background: #16213e;
+                border: 1px solid #0f3460;
+                border-radius: 10px;
+                padding: 20px;
+            }
+            .card h3 {
+                color: #00ff88;
+                margin-bottom: 10px;
+            }
+            .badge {
+                padding: 3px 8px;
+                border-radius: 5px;
+                font-size: 0.8em;
+                background: #e94560;
+                color: #fff;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1>LagerBuzzer Control Panel</h1>
+                <p>MQTT Real-Time Event Management System</p>
+            </header>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="label">Broker Status</div>
+                    <div class="value" id="mqtt-status">Disconnecting...</div>
                 </div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Round Status</div>
-                <div class="value">
-                    <span id="roundStatus">Inactive</span>
+                <div class="stat-card">
+                    <div class="label">Active Devices</div>
+                    <div class="value" id="total-buzzers">0</div>
                 </div>
-                <div class="subvalue">
-                    Buzzes: <span id="roundBuzzCount">0</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tabs -->
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('overview')">Overview</div>
-            <div class="tab" onclick="switchTab('buzzers')">Buzzer Management</div>
-            <div class="tab" onclick="switchTab('round')">Current Round</div>
-            <div class="tab" onclick="switchTab('events')">All Events</div>
-        </div>
-
-        <!-- Overview Tab -->
-        <div id="tab-overview" class="tab-content active">
-            <!-- Winner Display -->
-            <div class="winner-display" id="winnerDisplay">
-                <div class="winner-label">Current Round Winner</div>
-                <div class="winner-name" id="winnerName">No winner yet</div>
-                <div class="winner-info" id="winnerInfo">Start a round and buzz to see the winner!</div>
-            </div>
-
-            <!-- Round Controls -->
-            <div style="margin-bottom: 30px;">
-                <h2 style="margin-bottom: 15px;">Round Controls</h2>
-                <div class="round-controls">
-                    <button class="btn btn-success" onclick="startRound()" id="startRoundBtn">
-                        <span>Start Round</span>
-                    </button>
-                    <button class="btn btn-warning" onclick="lockRound()" id="lockRoundBtn" disabled>
-                        <span>Lock Round</span>
-                    </button>
-                    <button class="btn btn-danger" onclick="resetRound()" id="resetRoundBtn">
-                        <span>Reset Round</span>
-                    </button>
-                    <button class="btn btn-secondary" onclick="refreshAll()">
-                        <span>Refresh All</span>
-                    </button>
+                <div class="stat-card">
+                    <div class="label">Total Hits This Session</div>
+                    <div class="value" id="total-events">0</div>
                 </div>
             </div>
 
-            <!-- Quick Stats -->
-            <div class="buzzers-grid">
-                <div class="buzzer-card">
-                    <h3 style="margin-bottom: 15px; color: #00ff88;">Quick Actions</h3>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <button class="btn btn-primary" onclick="enableAllBuzzers()">
-                            Enable All Buzzers
-                        </button>
-                        <button class="btn btn-primary" onclick="disableAllBuzzers()">
-                            Disable All Buzzers
-                        </button>
-                        <button class="btn btn-primary" onclick="unlockAllBuzzers()">
-                            Unlock All Buzzers
-                        </button>
-                        <button class="btn btn-danger" onclick="clearAllData()">
-                            Clear All Data
-                        </button>
-                    </div>
+            <div class="winner-display">
+                <div
+                    style="
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                        color: #fff;
+                        margin-bottom: 5px;
+                    "
+                >
+                    Current Winner
                 </div>
-                <div class="buzzer-card">
-                    <h3 style="margin-bottom: 15px; color: #00ff88;">Round Info</h3>
-                    <div class="buzzer-stats">
-                        <div class="stat-row">
-                            <span class="stat-label">Status:</span>
-                            <span class="stat-value" id="roundStatusDetail">Inactive</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Started:</span>
-                            <span class="stat-value" id="roundStartedAt">-</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Winner:</span>
-                            <span class="stat-value" id="roundWinnerDetail">-</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Locked:</span>
-                            <span class="stat-value" id="roundLockedStatus">No</span>
-                        </div>
-                    </div>
-                </div>
+                <div class="winner-name" id="round-winner">WAITING...</div>
             </div>
-        </div>
 
-        <!-- Buzzers Tab -->
-        <div id="tab-buzzers" class="tab-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2>Buzzer Management</h2>
-                <button class="btn btn-primary" onclick="addNewBuzzer()">
-                    <span>+ Add Buzzer</span>
+            <div class="round-controls">
+                <button
+                    class="btn btn-primary"
+                    onclick="triggerAction('reset')"
+                >
+                    Reset Round / Unlock
+                </button>
+                <button
+                    class="btn btn-secondary"
+                    onclick="triggerAction('lock')"
+                >
+                    Lock Buzzer Inputs
                 </button>
             </div>
-            
-            <div class="buzzers-grid" id="buzzersList">
-                <div class="empty-state">
-                    <p>No buzzers registered yet. Buzzers will appear here automatically when they send their first message.</p>
-                </div>
-            </div>
+
+            <h2 style="margin-bottom: 15px">Registered Buzzers</h2>
+            <div class="grid" id="buzzers-container"></div>
         </div>
 
-        <!-- Round Tab -->
-        <div id="tab-round" class="tab-content">
-            <h2 style="margin-bottom: 20px;">Current Round Details</h2>
-            
-            <div class="winner-display" style="margin-bottom: 30px;">
-                <div class="winner-label">Winner</div>
-                <div class="winner-name" id="roundWinnerName">No winner yet</div>
-                <div class="winner-info" id="roundWinnerInfo">-</div>
-            </div>
+        <script>
+            async function fetchSystemState() {
+                try {
+                    // Get general stats
+                    const statsRes = await fetch("/api/stats");
+                    const stats = (await statsRes.getJson)
+                        ? await statsRes.getJson()
+                        : await statsRes.json();
 
-            <h3 style="margin-bottom: 15px;">Round Buzzes</h3>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Buzzer</th>
-                            <th>Name</th>
-                            <th>Corrected Time</th>
-                            <th>RTT (ms)</th>
-                            <th>Button Press</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="roundBuzzesTable">
-                        <tr>
-                            <td colspan="7" class="empty-state">No buzzes in current round</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+                    document.getElementById("mqtt-status").innerText =
+                        stats.mqtt_connected ? "CONNECTED" : "OFFLINE";
+                    document.getElementById("mqtt-status").style.color =
+                        stats.mqtt_connected ? "#00ff88" : "#ff4444";
+                    document.getElementById("total-buzzers").innerText =
+                        stats.total_buzzers;
+                    document.getElementById("total-events").innerText =
+                        stats.total_events;
 
-        <!-- Events Tab -->
-        <div id="tab-events" class="tab-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2>All Buzz Events</h2>
-                <button class="btn btn-secondary" onclick="refreshEvents()">Refresh</button>
-            </div>
-            
-            <div class="events-container">
-                <div id="eventList" class="event-list">
-                    <div class="empty-state">
-                        <p>No events yet. Waiting for MQTT messages...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                    // Get round results
+                    const roundRes = await fetch("/api/round");
+                    const round = await roundRes.json();
+                    const winnerEl = document.getElementById("round-winner");
 
-    <!-- Edit Buzzer Modal -->
-    <div id="editBuzzerModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Edit Buzzer</h2>
-                <button class="modal-close" onclick="closeModal('editBuzzerModal')">&times;</button>
-            </div>
-            <form id="editBuzzerForm" onsubmit="saveBuzzer(); return false;">
-                <input type="hidden" id="editBuzzerId">
-                <div class="form-group">
-                    <label class="form-label">Buzzer ID</label>
-                    <input type="text" class="form-input" id="editBuzzerClientId" readonly>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Display Name</label>
-                    <input type="text" class="form-input" id="editBuzzerName" placeholder="Enter buzzer name">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">IP Address</label>
-                    <input type="text" class="form-input" id="editBuzzerIp" placeholder="Optional IP address">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Status</label>
-                    <div style="display: flex; gap: 10px;">
-                        <label style="display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="editBuzzerEnabled" checked>
-                            <span>Enabled</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="editBuzzerLocked">
-                            <span>Locked</span>
-                        </label>
-                    </div>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('editBuzzerModal')">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
+                    if (round.winner) {
+                        winnerEl.innerText = round.winner.toUpperCase();
+                    } else {
+                        winnerEl.innerText = "WAITING FOR BUZZ...";
+                    }
 
-    <script>
-        // ============================================================================
-        // Tab Management
-        // ============================================================================
-        
-        function switchTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Show selected tab
-            document.getElementById(`tab-${tabName}`).classList.add('active');
-            event.target.classList.add('active');
-            
-            // Refresh data for the tab
-            if (tabName === 'buzzers') {
-                refreshBuzzers();
-            } else if (tabName === 'round') {
-                refreshRound();
-            } else if (tabName === 'events') {
-                refreshEvents();
-            }
-        }
-        
-        // ============================================================================
-        // API Functions
-        // ============================================================================
-        
-        async function fetchAPI(endpoint, options = {}) {
-            try {
-                const response = await fetch(endpoint, options);
-                if (response.ok) {
-                    return await response.json();
-                } else {
-                    console.error(`API Error: ${response.status} ${response.statusText}`);
-                    return null;
-                }
-            } catch (error) {
-                console.error(`Fetch error: ${error}`);
-                return null;
-            }
-        }
-        
-        async function postAPI(endpoint, data = {}) {
-            return fetchAPI(endpoint, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-        }
-        
-        async function putAPI(endpoint, data = {}) {
-            return fetchAPI(endpoint, {
-                method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-        }
-        
-        async function deleteAPI(endpoint) {
-            return fetchAPI(endpoint, {method: 'DELETE'});
-        }
-        
-        // ============================================================================
-        // Data Refresh Functions
-        // ============================================================================
-        
-        async function refreshStats() {
-            const stats = await fetchAPI('/api/stats');
-            if (stats) {
-                document.getElementById('totalEvents').textContent = stats.total_events;
-                document.getElementById('totalBuzzers').textContent = stats.total_buzzers;
-                document.getElementById('enabledBuzzers').textContent = stats.enabled_buzzers;
-                
-                const mqttStatus = document.getElementById('mqttStatus');
-                if (stats.mqtt_connected) {
-                    mqttStatus.textContent = 'Connected';
-                    mqttStatus.className = 'mqtt-status mqtt-connected';
-                } else {
-                    mqttStatus.textContent = 'Disconnected';
-                    mqttStatus.className = 'mqtt-status mqtt-disconnected';
-                }
-                
-                // Round status
-                const round = stats.round;
-                document.getElementById('roundStatus').textContent = round.active ? 'Active' : 'Inactive';
-                document.getElementById('roundBuzzCount').textContent = round.buzz_count;
-                
-                updateRoundStatusDisplay(round);
-            }
-        }
-        
-        async function refreshEvents() {
-            const events = await fetchAPI('/api/events');
-            displayEvents(events || []);
-        }
-        
-        async function refreshBuzzers() {
-            const buzzers = await fetchAPI('/api/buzzers');
-            displayBuzzers(buzzers || {});
-        }
-        
-        async function refreshRound() {
-            const round = await fetchAPI('/api/round');
-            displayRound(round);
-        }
-        
-        async function refreshWinner() {
-            const winner = await fetchAPI('/api/round/winner');
-            updateWinnerDisplay(winner);
-        }
-        
-        async function refreshAll() {
-            await Promise.all([
-                refreshStats(),
-                refreshEvents(),
-                refreshBuzzers(),
-                refreshRound(),
-                refreshWinner()
-            ]);
-        }
-        
-        // ============================================================================
-        // Display Functions
-        // ============================================================================
-        
-        function formatTimestamp(unixTimestamp) {
-            if (!unixTimestamp) return 'N/A';
-            const date = new Date(unixTimestamp * 1000);
-            return date.toLocaleString();
-        }
-        
-        function formatRuntime(millis) {
-            if (!millis) return 'N/A';
-            return (millis / 1000).toFixed(3) + 's';
-        }
-        
-        function formatDateTime(unixTimestamp) {
-            if (!unixTimestamp) return 'N/A';
-            const date = new Date(unixTimestamp * 1000);
-            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-        }
-        
-        function displayEvents(events) {
-            const eventList = document.getElementById('eventList');
-            
-            if (events.length === 0) {
-                eventList.innerHTML = '<div class="empty-state"><p>No events yet. Waiting for MQTT messages...</p></div>';
-                return;
-            }
-            
-            let html = '';
-            events.forEach((event, index) => {
-                const payload = event.payload;
-                const received = new Date(event.timestamp_received * 1000);
-                const corrected = new Date(event.corrected_timestamp * 1000);
-                
-                html += `
-                    <div class="event-card">
-                        <div class="event-header">
-                            <span class="timestamp">Received: ${received.toLocaleTimeString()}</span>
-                            <span class="buzzer-tag">${event.buzzer_id || 'Unknown'}</span>
-                        </div>
-                        <div class="event-body">
-                            <div class="field">
-                                <span class="field-label">Buzzer</span>
-                                <span class="field-value">${event.buzzer_id || 'Unknown'}</span>
-                            </div>
-                            <div class="field">
-                                <span class="field-label">Corrected Time</span>
-                                <span class="field-value">${corrected.toLocaleTimeString()}</span>
-                            </div>
-                            <div class="field">
-                                <span class="field-label">Roundtrip Time</span>
-                                <span class="field-value">${event.roundtrip_time_ms.toFixed(2)}ms</span>
-                            </div>
-                            <div class="field">
-                                <span class="field-label">Time Sync</span>
-                                <span class="field-value">${payload.time_sync || 'N/A'}</span>
-                            </div>
-                            <div class="field">
-                                <span class="field-label">Time Sync Received</span>
-                                <span class="field-value">${formatRuntime(payload.time_sync_received || 0)}</span>
-                            </div>
-                            <div class="field">
-                                <span class="field-label">Button Press</span>
-                                <span class="field-value">${formatRuntime(payload.button_press || 0)}</span>
-                            </div>
-                            <div class="field">
-                                <span class="field-label">Send Timestamp</span>
-                                <span class="field-value">${formatRuntime(payload.send_timestamp || 0)}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            eventList.innerHTML = html;
-        }
-        
-        function displayBuzzers(buzzers) {
-            const buzzersList = document.getElementById('buzzersList');
-            
-            if (Object.keys(buzzers).length === 0) {
-                buzzersList.innerHTML = '<div class="empty-state"><p>No buzzers registered yet.</p></div>';
-                return;
-            }
-            
-            let html = '';
-            for (const [id, buzzer] of Object.entries(buzzers)) {
-                html += `
-                    <div class="buzzer-card ${buzzer.locked ? 'locked' : ''} ${!buzzer.enabled ? 'disabled' : ''}">
-                        <div class="buzzer-header">
-                            <div>
-                                <div class="buzzer-name">${buzzer.name}</div>
-                                <div class="buzzer-id">${buzzer.client_id}</div>
-                            </div>
-                            <div class="buzzer-status">
-                                <span class="status-badge ${buzzer.enabled ? 'status-enabled' : 'status-disabled'}">
-                                    ${buzzer.enabled ? 'Enabled' : 'Disabled'}
+                    // Get explicit list of all items
+                    const buzzersRes = await fetch("/api/buzzers");
+                    const buzzers = await buzzersRes.json();
+                    const container =
+                        document.getElementById("buzzers-container");
+                    container.innerHTML = "";
+
+                    Object.values(buzzers).forEach((buzzer) => {
+                        const isWinner = round.winner === buzzer.client_id;
+                        container.innerHTML += `
+                        <div class="card" style="border-color: ${isWinner ? "#00ff88" : "#0f3460"}">
+                            <h3>${buzzer.name}</h3>
+                            <p style="font-size:0.85em; color:#888;">ID: ${buzzer.client_id}</p>
+                            <p style="margin-top: 10px;">Hits: <strong>${buzzer.buzz_count}</strong></p>
+                            <p>IP: ${buzzer.ip_address || "Unknown"}</p>
+                            <div style="margin-top:10px;">
+                                <span class="badge" style="background: ${buzzer.enabled ? "#0f3460" : "#ff4444"}">
+                                    ${buzzer.enabled ? "Enabled" : "Disabled"}
                                 </span>
-                                ${buzzer.locked ? '<span class="status-badge status-locked">Locked</span>' : ''}
                             </div>
                         </div>
-                        <div class="buzzer-stats">
-                            <div class="stat-row">
-                                <span class="stat-label">Buzz Count:</span>
-                                <span class="stat-value">${buzzer.buzz_count}</span>
-                            </div>
-                            <div class="stat-row">
-                                <span class="stat-label">Avg RTT:</span>
-                                <span class="stat-value">${buzzer.avg_rtt ? buzzer.avg_rtt.toFixed(2) + 'ms' : 'N/A'}</span>
-                            </div>
-                            <div class="stat-row">
-                                <span class="stat-label">IP:</span>
-                                <span class="stat-value">${buzzer.ip_address || 'N/A'}</span>
-                            </div>
-                            <div class="stat-row">
-                                <span class="stat-label">Last Buzz:</span>
-                                <span class="stat-value">${buzzer.last_buzz_time ? formatTimestamp(buzzer.last_buzz_time) : 'Never'}</span>
-                            </div>
-                        </div>
-                        <div class="buzzer-actions">
-                            <button class="btn btn-secondary" onclick="editBuzzer('${id}')">Edit</button>
-                            ${buzzer.enabled ? 
-                                `<button class="btn btn-danger" onclick="disableBuzzer('${id}')">Disable</button>` :
-                                `<button class="btn btn-success" onclick="enableBuzzer('${id}')">Enable</button>`
-                            }
-                            ${buzzer.locked ? 
-                                `<button class="btn btn-success" onclick="unlockBuzzer('${id}')">Unlock</button>` :
-                                `<button class="btn btn-warning" onclick="lockBuzzer('${id}')">Lock</button>`
-                            }
-                            <button class="btn btn-danger" onclick="deleteBuzzer('${id}')">Delete</button>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            buzzersList.innerHTML = html;
-        }
-        
-        function updateWinnerDisplay(winner) {
-            const winnerDisplay = document.getElementById('winnerDisplay');
-            const winnerName = document.getElementById('winnerName');
-            const winnerInfo = document.getElementById('winnerInfo');
-            
-            if (winner && winner.buzzer_id) {
-                winnerName.textContent = winner.buzzer_name || winner.buzzer_id;
-                const correctedTime = new Date(winner.corrected_timestamp * 1000);
-                winnerInfo.innerHTML = `
-                    <strong>Buzzer:</strong> ${winner.buzzer_id}<br>
-                    <strong>Corrected Time:</strong> ${correctedTime.toLocaleTimeString()}<br>
-                    <strong>Roundtrip Time:</strong> ${winner.roundtrip_time_ms ? winner.roundtrip_time_ms.toFixed(2) + 'ms' : 'N/A'}
-                `;
-            } else {
-                winnerName.textContent = 'No winner yet';
-                winnerInfo.textContent = 'Start a round and buzz to see the winner!';
-            }
-        }
-        
-        function updateRoundStatusDisplay(round) {
-            const roundStatus = document.getElementById('roundStatus');
-            const roundStatusDetail = document.getElementById('roundStatusDetail');
-            const roundStartedAt = document.getElementById('roundStartedAt');
-            const roundWinnerDetail = document.getElementById('roundWinnerDetail');
-            const roundLockedStatus = document.getElementById('roundLockedStatus');
-            
-            roundStatus.textContent = round.active ? 'Active' : 'Inactive';
-            roundStatusDetail.textContent = round.active ? 'Active' : 'Inactive';
-            roundStartedAt.textContent = round.started_at ? formatDateTime(round.started_at) : '-';
-            roundWinnerDetail.textContent = round.winner || '-';
-            roundLockedStatus.textContent = round.locked ? 'Yes' : 'No';
-            
-            // Update button states
-            document.getElementById('startRoundBtn').disabled = round.active;
-            document.getElementById('lockRoundBtn').disabled = !round.active || round.locked;
-        }
-        
-        function displayRound(round) {
-            // Update winner display
-            if (round.winner) {
-                const winner = {
-                    buzzer_id: round.winner,
-                    buzzer_name: round.buzzes.find(b => b.buzzer_id === round.winner)?.event.buzzer_id || round.winner,
-                    corrected_timestamp: round.buzzes.find(b => b.buzzer_id === round.winner)?.event.corrected_timestamp,
-                    roundtrip_time_ms: round.buzzes.find(b => b.buzzer_id === round.winner)?.event.roundtrip_time_ms
-                };
-                updateWinnerDisplay(winner);
-            } else {
-                updateWinnerDisplay(null);
-            }
-            
-            // Update round table
-            const tbody = document.getElementById('roundBuzzesTable');
-            
-            if (round.buzzes && round.buzzes.length > 0) {
-                let html = '';
-                round.buzzes.forEach((buzz, index) => {
-                    const event = buzz.event;
-                    const correctedTime = new Date(event.corrected_timestamp * 1000);
-                    const buzzer = buzzers[buzz.buzzer_id];
-                    
-                    html += `
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td><span class="buzzer-tag">${buzz.buzzer_id}</span></td>
-                            <td>${buzzer ? buzzer.name : buzz.buzzer_id}</td>
-                            <td>${correctedTime.toLocaleTimeString()}</td>
-                            <td>${event.roundtrip_time_ms.toFixed(2)}ms</td>
-                            <td>${formatRuntime(event.payload.button_press || 0)}</td>
-                            <td>
-                                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8em;" onclick="lockBuzzer('${buzz.buzzer_id}')">Lock</button>
-                            </td>
-                        </tr>
                     `;
+                    });
+                } catch (err) {
+                    console.error("Error updates tracking loop state:", err);
+                }
+            }
+
+            async function triggerAction(actionName) {
+                await fetch("/api/round", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: actionName }),
                 });
-                tbody.innerHTML = html;
-            } else {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No buzzes in current round</td></tr>';
+                fetchSystemState();
             }
-            
-            // Update round info in overview
-            updateRoundStatusDisplay(round);
-        }
-        
-        // ============================================================================
-        // Action Functions
-        // ============================================================================
-        
-        async function startRound() {
-            await postAPI('/api/round', {action: 'start'});
-            refreshAll();
-        }
-        
-        async function lockRound() {
-            await postAPI('/api/round', {action: 'lock'});
-            refreshAll();
-        }
-        
-        async function unlockRound() {
-            await postAPI('/api/round', {action: 'unlock'});
-            refreshAll();
-        }
-        
-        async function resetRound() {
-            await postAPI('/api/round', {action: 'reset'});
-            refreshAll();
-        }
-        
-        async function enableAllBuzzers() {
-            await refreshBuzzers();
-            // Enable all buzzers
-            // This would require an endpoint, for now just refresh
-            alert('Use the edit function to enable individual buzzers');
-        }
-        
-        async function disableAllBuzzers() {
-            await refreshBuzzers();
-            alert('Use the edit function to disable individual buzzers');
-        }
-        
-        async function unlockAllBuzzers() {
-            await refreshBuzzers();
-            alert('Use the edit function to unlock individual buzzers');
-        }
-        
-        async function clearAllData() {
-            if (confirm('Are you sure you want to clear all buzzers and events?')) {
-                await postAPI('/api/buzzers/clear');
-                await postAPI('/api/events/clear');
-                refreshAll();
-            }
-        }
-        
-        async function lockBuzzer(clientId) {
-            await postAPI(`/api/buzzers/${clientId}/lock`);
-            refreshBuzzers();
-            refreshRound();
-        }
-        
-        async function unlockBuzzer(clientId) {
-            await postAPI(`/api/buzzers/${clientId}/unlock`);
-            refreshBuzzers();
-            refreshRound();
-        }
-        
-        async function enableBuzzer(clientId) {
-            await postAPI(`/api/buzzers/${clientId}/enable`);
-            refreshBuzzers();
-            refreshRound();
-        }
-        
-        async function disableBuzzer(clientId) {
-            await postAPI(`/api/buzzers/${clientId}/disable`);
-            refreshBuzzers();
-            refreshRound();
-        }
-        
-        async function deleteBuzzer(clientId) {
-            if (confirm(`Are you sure you want to delete buzzer ${clientId}?`)) {
-                await deleteAPI(`/api/buzzers/${clientId}`);
-                refreshBuzzers();
-            }
-        }
-        
-        async function editBuzzer(clientId) {
-            const buzzer = (await fetchAPI(`/api/buzzers/${clientId}`));
-            if (buzzer) {
-                document.getElementById('editBuzzerId').value = clientId;
-                document.getElementById('editBuzzerClientId').value = buzzer.client_id;
-                document.getElementById('editBuzzerName').value = buzzer.name || '';
-                document.getElementById('editBuzzerIp').value = buzzer.ip_address || '';
-                document.getElementById('editBuzzerEnabled').checked = buzzer.enabled;
-                document.getElementById('editBuzzerLocked').checked = buzzer.locked;
-                document.getElementById('editBuzzerModal').classList.add('active');
-            }
-        }
-        
-        async function saveBuzzer() {
-            const clientId = document.getElementById('editBuzzerId').value;
-            const data = {
-                name: document.getElementById('editBuzzerName').value,
-                ip_address: document.getElementById('editBuzzerIp').value,
-                enabled: document.getElementById('editBuzzerEnabled').checked,
-                locked: document.getElementById('editBuzzerLocked').checked
-            };
-            
-            await putAPI(`/api/buzzers/${clientId}`, data);
-            closeModal('editBuzzerModal');
-            refreshBuzzers();
-            refreshRound();
-        }
-        
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-        }
-        
-        function addNewBuzzer() {
-            alert('Buzzers are automatically registered when they send their first message. No manual addition needed.');
-        }
-        
-        // ============================================================================
-        // Auto-refresh
-        // ============================================================================
-        
-        setInterval(refreshAll, 5000);
-        
-        // Initial load
-        window.onload = function() {
-            refreshAll();
-        };
-    </script>
-</body>
+
+            // Poll variables continuously every 400ms for sharp responsiveness
+            setInterval(fetchSystemState, 400);
+            window.onload = fetchSystemState;
+        </script>
+    </body>
 </html>
