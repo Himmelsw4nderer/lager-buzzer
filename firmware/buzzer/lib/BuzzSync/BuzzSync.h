@@ -11,7 +11,7 @@
 
 // JSON buffer sizes
 #define JSON_TIME_SYNC_BUFFER_SIZE 128
-#define JSON_BUZZ_BUFFER_SIZE 256
+#define JSON_BUZZ_BUFFER_SIZE 512  // Increased to accommodate client_id and IP address
 
 class BuzzSync {
 public:
@@ -42,6 +42,9 @@ private:
     uint32_t _syncTimeoutMs;
     uint32_t _lastSyncReceivedTime = 0;
 
+    // Store the client ID for this buzzer
+    String _clientId;
+
     WiFiClient _wifiClient;
     PubSubClient _mqttClient;
 
@@ -49,7 +52,6 @@ private:
     uint16_t _mqttPort;
     const char* _mqttUser;
     const char* _mqttPassword;
-    const char* _clientId;
 
     friend void _mqttTimeSyncCallback(char* topic, uint8_t* payload, unsigned int length);
     friend void _mqttCallback(char* topic, uint8_t* payload, unsigned int length);

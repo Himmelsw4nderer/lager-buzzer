@@ -18,7 +18,7 @@ void BuzzSync::begin(const char* mqttServer, uint16_t mqttPort,
     _mqttPort = mqttPort;
     _mqttUser = mqttUser;
     _mqttPassword = mqttPassword;
-    _clientId = clientId;
+    _clientId = clientId ? String(clientId) : String("buzzer-") + String(ESP.getChipId(), HEX);
     _syncTimeoutMs = syncTimeoutMs;
 
     // Setup MQTT client
@@ -31,6 +31,8 @@ void BuzzSync::begin(const char* mqttServer, uint16_t mqttPort,
     Serial.print(_mqttServer);
     Serial.print(":");
     Serial.println(_mqttPort);
+    Serial.print("[BuzzSync] Client ID: ");
+    Serial.println(_clientId);
 
     // First connection attempt
     reconnect();
@@ -121,6 +123,14 @@ bool BuzzSync::sendBuzz(uint32_t buttonPressTime) {
     jsonDoc["time_sync_received"] = _lastSync.localReceiveTime;
     jsonDoc["button_press"] = buttonPressTime;
     jsonDoc["send_timestamp"] = sendTimestamp;
+
+    // Add client ID to identify this buzzer
+    jsonDoc["client_id"] = _clientId;
+
+    // Also add WiFi local IP if available
+    if (WiFi.status() == WL_CONNECTED) {
+        jsonDoc["ip"] = WiFi.localIP().toString();
+    }
 
     // Serialize to JSON string
     char jsonBuffer[JSON_BUZZ_BUFFER_SIZE];
