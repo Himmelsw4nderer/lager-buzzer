@@ -8,6 +8,7 @@
 // MQTT topics
 #define MQTT_TIME_SYNC_TOPIC "lagerbuzzer/time_sync"
 #define MQTT_BUZZ_TOPIC "lagerbuzzer/buzz"
+#define MQTT_WINNER_TOPIC "lagerbuzzer/winner"
 
 // JSON buffer sizes
 #define JSON_TIME_SYNC_BUFFER_SIZE 128
@@ -28,6 +29,10 @@ public:
     bool isSynced() const;
 
     void reconnect();
+
+    // Callback for winner notification
+    using OnWinnerCallback = void (*)(bool isWinner);
+    void onWinner(OnWinnerCallback callback);
 
     static BuzzSync* _instance;
 
@@ -54,8 +59,12 @@ private:
     const char* _mqttPassword;
 
     friend void _mqttTimeSyncCallback(char* topic, uint8_t* payload, unsigned int length);
+    friend void _mqttWinnerCallback(char* topic, uint8_t* payload, unsigned int length);
     friend void _mqttCallback(char* topic, uint8_t* payload, unsigned int length);
 
     void _handleTimeSyncMessage(const char* payload, uint16_t length);
+    void _handleWinnerMessage(const char* payload, uint16_t length);
     void _setupMqttCallbacks();
+
+    OnWinnerCallback _winnerCallback = nullptr;
 };

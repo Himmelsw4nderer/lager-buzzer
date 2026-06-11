@@ -6,12 +6,25 @@
 // MQTT Configuration - update these for your environment
 const char* MQTT_SERVER = "192.168.4.1";
 const uint16_t MQTT_PORT = 1883;
-const char* MQTT_USER = nullptr;           // Set if your broker requires authentication
-const char* MQTT_PASSWORD = nullptr;       // Set if your broker requires authentication
-const char* MQTT_CLIENT_ID = nullptr;      // Optional: custom client ID, or auto-generated
+const char* MQTT_USER = nullptr;
+const char* MQTT_PASSWORD = nullptr;
+const char* MQTT_CLIENT_ID = nullptr;
 
 FlankButton btn(D2, true);
 BuzzSync buzzSync;
+
+
+// Empty callback - you can implement LED/speaker logic here later
+void onWinnerNotification(bool isWinner) {
+    // TODO: Implement your LED and speaker logic here
+    // isWinner = true when this buzzer is the winner
+    // isWinner = false when someone else won or round was reset
+    if (isWinner) {
+        Serial.println("[BUZZER] I AM THE WINNER!");
+    } else {
+        Serial.println("[BUZZER] Not the winner.");
+    }
+}
 
 void setup() {
     Serial.begin(115200);
@@ -27,6 +40,8 @@ void setup() {
 
     btn.begin();
     buzzSync.begin(MQTT_SERVER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD, MQTT_CLIENT_ID);
+
+    buzzSync.onWinner(onWinnerNotification);
 
     Serial.println("[BUZZER] Ready.");
 }
