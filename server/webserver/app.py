@@ -234,7 +234,25 @@ def manage_round():
             current_round["locked"] = False
         elif action == "lock":
             current_round["locked"] = True
+        elif action == "clear_winner":
+            current_round["winner"] = None
+            current_round["locked"] = False
     return jsonify({"status": "success"})
+
+
+@app.route("/api/buzzers/enable_all", methods=["POST"])
+def enable_all_buzzers():
+    with buzzers_lock:
+        for buzzer in buzzers.values():
+            buzzer.enabled = True
+    return jsonify({"status": "success", "message": "All buzzers enabled"})
+
+
+@app.route("/api/round/buzzes", methods=["GET"])
+def get_round_buzzes():
+    with round_lock:
+        buzzes_order = list(current_round["buzzes"].keys())
+    return jsonify({"buzzes": buzzes_order})
 
 
 if __name__ == "__main__":

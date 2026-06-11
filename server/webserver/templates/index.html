@@ -235,6 +235,66 @@
             .status-indicator.offline {
                 color: #d32f2f;
             }
+
+            /* Runner-ups Display */
+            .runner-ups {
+                background: var(--card-bg);
+                padding: 20px;
+                border-radius: 12px;
+                margin-bottom: 30px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+                max-width: 300px;
+            }
+            .runner-ups-title {
+                font-size: 1em;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: #666;
+                margin-bottom: 10px;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 5px;
+            }
+            .runner-ups-list {
+                list-style: none;
+            }
+            .runner-ups-list li {
+                padding: 8px 0;
+                border-bottom: 1px solid #f0f0f0;
+                font-size: 0.95em;
+            }
+            .runner-ups-list li:last-child {
+                border-bottom: none;
+            }
+            .runner-up-name {
+                font-weight: 600;
+                color: var(--kolping-black);
+            }
+            .runner-up-position {
+                display: inline-block;
+                width: 24px;
+                height: 24px;
+                background: #ddd;
+                color: #666;
+                border-radius: 50%;
+                text-align: center;
+                line-height: 24px;
+                font-size: 0.75em;
+                font-weight: bold;
+                margin-right: 10px;
+            }
+
+            /* Winner Section Layout */
+            .winner-section {
+                display: flex;
+                gap: 30px;
+                align-items: stretch;
+            }
+            .winner-main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
         </style>
     </head>
     <body>
@@ -253,10 +313,24 @@
                 <span>Aktive Geräte: <span id="total-buzzers">0</span></span>
             </div>
 
-            <div class="winner-display" id="winner-box">
-                <div class="winner-title">Aktueller Gewinner</div>
-                <div class="winner-name" id="round-winner">
-                    WARTE AUF BUZZER...
+            <div class="winner-section">
+                <div
+                    class="runner-ups"
+                    id="runner-ups-box"
+                    style="display: none"
+                >
+                    <div class="runner-ups-title">Pl&auml;tze</div>
+                    <ol class="runner-ups-list" id="runner-ups-list">
+                        <!-- Runner-ups will be injected here -->
+                    </ol>
+                </div>
+                <div class="winner-main">
+                    <div class="winner-display" id="winner-box">
+                        <div class="winner-title">Aktueller Gewinner</div>
+                        <div class="winner-name" id="round-winner">
+                            WARTE AUF BUZZER...
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -272,6 +346,15 @@
                     onclick="triggerAction('lock')"
                 >
                     Buzzer Sperren
+                </button>
+                <button
+                    class="btn btn-secondary"
+                    onclick="triggerAction('clear_winner')"
+                >
+                    Gewinner Zur&uuml;cksetzen
+                </button>
+                <button class="btn btn-primary" onclick="enableAllBuzzers()">
+                    Alle Aktivieren
                 </button>
             </div>
 
@@ -302,6 +385,9 @@
                     const buzzersRes = await fetch("/api/buzzers");
                     const buzzers = await buzzersRes.json();
 
+                    // Fetch Round Buzzes for runner-ups
+                    const buzzes = await fetchRoundBuzzes();
+
                     // Handle Winner UI
                     const winnerBox = document.getElementById("winner-box");
                     const winnerNameEl =
@@ -317,6 +403,32 @@
                     } else {
                         winnerBox.classList.remove("has-winner");
                         winnerNameEl.innerText = "WARTE AUF BUZZER...";
+                    }
+
+                    // Handle Runner-ups Display
+                    const runnerUpBox =
+                        document.getElementById("runner-ups-box");
+                    const runnerUpList =
+                        document.getElementById("runner-ups-list");
+
+                    if (buzzes.length > 1) {
+                        runnerUpBox.style.display = "block";
+                        runnerUpList.innerHTML = "";
+
+                        // Skip the first buzzer (the winner) and show the rest as runner-ups
+                        const runnerUps = buzzes.slice(1);
+
+                        runnerUps.forEach((buzzerId, index) => {
+                            const position = index + 2; // 2nd, 3rd, 4th, etc.
+                            const buzzer = buzzers[buzzerId];
+                            if (buzzer) {
+                                const listItem = document.createElement("li");
+                                listItem.innerHTML = `<span class="runner-up-position">${position}</span><span class="runner-up-name">${buzzer.name}</span>`;
+                                runnerUpList.appendChild(listItem);
+                            }
+                        });
+                    } else {
+                        runnerUpBox.style.display = "none";
                     }
 
                     // Render Buzzer Cards
@@ -365,6 +477,25 @@
                     body: JSON.stringify({ action: actionName }),
                 });
                 fetchSystemState();
+            }
+
+            async function enableAllBuzzers() {
+                await fetch("/api/buzzers/enable_all", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                });
+                fetchSystemState();
+            }
+
+            async function fetchRoundBuzzes() {
+                try {
+                    const response = await fetch("/api/round/buzzes");
+                    const data = await response.json();
+                    return data.buzzes || [];
+                } catch (err) {
+                    console.error("Fehler beim Laden der Buzzes:", err);
+                    return [];
+                }
             }
 
             async function renameBuzzer(clientId, currentName) {
