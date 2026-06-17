@@ -754,7 +754,7 @@
                                     <h3 style="${buzzer.color ? `color: ${buzzer.color};` : ""}">${buzzer.name}</h3>
                                     <div style="display: flex; gap: 5px;">
                                         <button class="icon-btn" onclick="renameBuzzer('${buzzer.client_id}', '${buzzer.name}')" title="Umbenennen">✏️</button>
-                                        <button class="icon-btn" onclick="showColorPicker('${buzzer.client_id}')" title="Farbe ändern">🎨</button>
+                                        <button class="icon-btn" onclick="showColorPicker('${buzzer.client_id}', '${buzzer.color || ""}')" title="Farbe ändern">🎨</button>
                                     </div>
                                 </div>
                                 <div class="card-body">
@@ -828,10 +828,10 @@
                 }
             }
 
-            function showColorPicker(clientId) {
+            function showColorPicker(clientId, currentColor) {
                 const color = prompt(
                     "Farbe als Hex-Code eingeben (z.B. #ff0000 oder rot):",
-                    "",
+                    currentColor || "",
                 );
                 if (color && color.trim() !== "") {
                     setBuzzerColor(clientId, color.trim());

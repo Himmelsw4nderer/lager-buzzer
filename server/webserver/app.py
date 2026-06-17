@@ -98,7 +98,7 @@ def get_or_create_buzzer(client_id, ip_address=None):
 
 
 def extract_buzzer_id(payload_dict, topic):
-    for key in ["client_id", "buzzer_id", "mac", "ip", "name"]:
+    for key in ["client_id", "buzzer_id", "mac", "ip"]:
         if key in payload_dict:
             return str(payload_dict[key])
     return topic.split("/")[-1]
@@ -108,9 +108,10 @@ def add_buzz_event(topic, payload_dict, timestamp):
     buzzer_id = extract_buzzer_id(payload_dict, topic)
     buzzer_ip = payload_dict.get("ip", None)
 
-    buzzer = get_or_create_buzzer(buzzer_id, buzzer_ip)
-    buzzer.last_buzz_time = timestamp
-    buzzer.buzz_count += 1
+    with buzzers_lock:
+        buzzer = get_or_create_buzzer(buzzer_id, buzzer_ip)
+        buzzer.last_buzz_time = timestamp
+        buzzer.buzz_count += 1
 
     event = BuzzEvent(topic, payload_dict, timestamp, buzzer_id)
 
@@ -200,10 +201,6 @@ def setup_mqtt():
                 logger.error(f"MQTT connection failed after {retries} attempts: {e}")
                 # Create a dummy client to avoid None reference errors
                 mqtt_client = None
-
-
-# Initialize MQTT when module is loaded
-setup_mqtt()
 
 
 # ============================================================================
