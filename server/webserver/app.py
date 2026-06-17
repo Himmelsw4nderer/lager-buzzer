@@ -179,6 +179,11 @@ def publish_winner(winner_id):
 
 def setup_mqtt():
     global mqtt_client
+
+    # If MQTT is already set up and connected, don't reinitialize
+    if mqtt_client is not None and mqtt_client.is_connected():
+        return
+
     retries = 5
     retry_delay = 2
 
