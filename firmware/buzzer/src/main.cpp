@@ -11,7 +11,7 @@ const char* MQTT_USER = nullptr;
 const char* MQTT_PASSWORD = nullptr;
 const char* MQTT_CLIENT_ID = nullptr;
 
-LEDController led(D7, 1000);
+LEDController led(D7, 10000);
 FlankButton btn(D2, true);
 BuzzSync buzzSync;
 

@@ -282,6 +282,23 @@
                 display: flex;
                 gap: 8px;
                 margin-left: 20px;
+                align-items: center;
+            }
+            .sound-btn {
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                color: white;
+                padding: 6px 12px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 0.9em;
+                transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .sound-btn:hover {
+                background: rgba(255, 255, 255, 0.3);
             }
             .lang-btn {
                 background: rgba(255, 255, 255, 0.2);
@@ -359,6 +376,17 @@
         </style>
     </head>
     <body>
+        <!-- Audio elements for sounds -->
+        <audio
+            id="buzz-sound"
+            src="/static/sounds/buzz.mp3"
+            preload="auto"
+        ></audio>
+        <audio
+            id="reset-sound"
+            src="/static/sounds/reset.mp3"
+            preload="auto"
+        ></audio>
         <header>
             <div
                 style="
@@ -374,7 +402,9 @@
                     <div class="status-bar">
                         <div>
                             <span id="broker-status-text">Broker Status:</span>
-                            <span id="mqtt-status" class="status-indicator">Verbinde...</span>
+                            <span id="mqtt-status" class="status-indicator"
+                                >Verbinde...</span
+                            >
                         </div>
                         <div>
                             <span id="active-devices-text">Aktive Geräte:</span>
@@ -388,6 +418,14 @@
                     </button>
                     <button class="lang-btn" onclick="changeLanguage('en')">
                         🇬🇧 EN
+                    </button>
+                    <button
+                        class="sound-btn"
+                        onclick="toggleSoundButton()"
+                        id="sound-toggle-btn"
+                    >
+                        <span id="sound-icon">🔊</span>
+                        <span id="sound-text">Sound AN</span>
                     </button>
                 </div>
             </div>
@@ -446,6 +484,43 @@
         </div>
 
         <script>
+            // Sound helper functions
+            let lastWinner = null;
+            let isSoundEnabled = true;
+
+            function playSound(soundId) {
+                if (!isSoundEnabled) return;
+                const audio = document.getElementById(soundId);
+                if (audio) {
+                    audio.currentTime = 0; // Reset to start
+                    audio
+                        .play()
+                        .catch((e) => console.log("Sound playback failed:", e));
+                }
+            }
+
+            function toggleSound() {
+                isSoundEnabled = !isSoundEnabled;
+                return isSoundEnabled;
+            }
+
+            function toggleSoundButton() {
+                isSoundEnabled = !isSoundEnabled;
+                updateSoundButton();
+            }
+
+            function updateSoundButton() {
+                const soundText = document.getElementById("sound-text");
+                const soundIcon = document.getElementById("sound-icon");
+                if (isSoundEnabled) {
+                    soundText.textContent = getText("soundOn");
+                    soundIcon.textContent = "🔊";
+                } else {
+                    soundText.textContent = getText("soundOff");
+                    soundIcon.textContent = "🔇";
+                }
+            }
+
             // Language translations
             const translations = {
                 de: {
@@ -466,6 +541,8 @@
                     enable: "🟢 Aktivieren",
                     online: "ONLINE",
                     offline: "OFFLINE",
+                    soundOn: "Sound AN",
+                    soundOff: "Sound AUS",
                 },
                 en: {
                     title: "Kolping Youth LagerBuzzer",
@@ -485,6 +562,8 @@
                     enable: "🟢 Enable",
                     online: "ONLINE",
                     offline: "OFFLINE",
+                    soundOn: "Sound ON",
+                    soundOff: "Sound OFF",
                 },
             };
 
@@ -500,6 +579,9 @@
                 const t = translations[currentLanguage];
                 document.querySelector("header h1").innerHTML =
                     `<strong>Kolping</strong>${t.title.replace("Kolping", "")}`;
+
+                // Update sound button text
+                updateSoundButton();
 
                 // Update button texts
                 const buttons = document.querySelectorAll(".btn, .btn-small");
@@ -584,7 +666,12 @@
                     const winnerNameEl =
                         document.getElementById("round-winner");
 
+                    // Check if winner changed and play sound
                     if (stats.round.winner && buzzers[stats.round.winner]) {
+                        if (lastWinner !== stats.round.winner) {
+                            playSound("buzz-sound");
+                            lastWinner = stats.round.winner;
+                        }
                         winnerBox.classList.add("has-winner");
                         const winnerBuzzer = buzzers[stats.round.winner];
                         winnerNameEl.innerText = winnerBuzzer.name;
@@ -601,12 +688,20 @@
                             winnerNameEl.style.color = "var(--kolping-orange)";
                         }
                     } else if (stats.round.locked) {
+                        if (lastWinner !== null) {
+                            lastWinner = null;
+                        }
                         winnerBox.classList.remove("has-winner");
                         winnerNameEl.innerText = getText("locked");
                         winnerBox.style.borderColor = "var(--kolping-orange)";
                         winnerBox.style.boxShadow = "";
                         winnerNameEl.style.color = "var(--kolping-black)";
                     } else {
+                        // Reset state - play sound if winner was cleared
+                        if (lastWinner !== null) {
+                            playSound("reset-sound");
+                            lastWinner = null;
+                        }
                         winnerBox.classList.remove("has-winner");
                         winnerNameEl.innerText = getText("waiting");
                         winnerBox.style.borderColor = "";
