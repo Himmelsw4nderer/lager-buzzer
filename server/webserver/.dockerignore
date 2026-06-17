@@ -11,3 +11,6 @@ env
 .gitignore
 Dockerfile
 .dockerignore
+*.db
+*.sqlite
+*.sqlite3

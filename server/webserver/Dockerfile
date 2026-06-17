@@ -7,11 +7,15 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY app.py .
+COPY database.py .
 COPY templates/ ./templates/
 COPY static/ ./static/
 COPY requirements.txt .
 
 RUN pip install -r requirements.txt
+
+# Create data directory for SQLite database
+RUN mkdir -p /app/data
 
 EXPOSE 5000
 
