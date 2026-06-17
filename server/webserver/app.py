@@ -178,14 +178,32 @@ def publish_winner(winner_id):
 
 def setup_mqtt():
     global mqtt_client
-    try:
-        mqtt_client = mqtt.Client()
-        mqtt_client.on_connect = on_mqtt_connect
-        mqtt_client.on_message = on_mqtt_message
-        mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
-        mqtt_client.loop_start()
-    except Exception as e:
-        logger.error(f"MQTT Fehler: {e}")
+    retries = 5
+    retry_delay = 2
+
+    for attempt in range(retries):
+        try:
+            mqtt_client = mqtt.Client()
+            mqtt_client.on_connect = on_mqtt_connect
+            mqtt_client.on_message = on_mqtt_message
+            mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
+            mqtt_client.loop_start()
+            logger.info(f"Connected to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
+            return
+        except Exception as e:
+            if attempt < retries - 1:
+                logger.warning(
+                    f"MQTT connection failed (attempt {attempt + 1}/{retries}): {e}. Retrying in {retry_delay}s..."
+                )
+                time.sleep(retry_delay)
+            else:
+                logger.error(f"MQTT connection failed after {retries} attempts: {e}")
+                # Create a dummy client to avoid None reference errors
+                mqtt_client = None
+
+
+# Initialize MQTT when module is loaded
+setup_mqtt()
 
 
 # ============================================================================
