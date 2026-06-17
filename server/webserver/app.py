@@ -12,6 +12,9 @@ import time
 from collections import OrderedDict
 
 import paho.mqtt.client as mqtt
+
+# Import database module
+from database import delete_buzzer, get_all_buzzers, get_buzzer, init_db, save_buzzer
 from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
@@ -33,14 +36,14 @@ logger = logging.getLogger(__name__)
 
 
 class Buzzer:
-    def __init__(self, client_id, ip_address=None):
+    def __init__(self, client_id, ip_address=None, name=None, color=None):
         self.client_id = client_id
         self.ip_address = ip_address
-        self.name = client_id  # Defaults to ID until renamed
+        self.name = name if name else client_id  # Defaults to ID until renamed
         self.enabled = True  # Used to lock out wrong answers
         self.last_buzz_time = None
         self.buzz_count = 0
-        self.color = None  # Custom color for this buzzer
+        self.color = color  # Custom color for this buzzer
 
     def to_dict(self):
         return {
@@ -88,10 +91,47 @@ mqtt_client = None
 # ============================================================================
 
 
+def load_buzzers_from_db():
+    """Load all buzzers from database into memory on startup."""
+    with buzzers_lock:
+        db_buzzers = get_all_buzzers()
+        for client_id, buzzer_data in db_buzzers.items():
+            if client_id not in buzzers:
+                buzzers[client_id] = Buzzer(
+                    client_id=client_id,
+                    ip_address=None,  # IP will be set when buzzer reconnects
+                    name=buzzer_data["name"],
+                    color=buzzer_data["color"],
+                )
+                logger.info(
+                    f"Loaded buzzer {client_id} ({buzzer_data['name']}) from database"
+                )
+
+
+# Initialize database and load buzzers
+init_db()
+load_buzzers_from_db()
+
+
 def get_or_create_buzzer(client_id, ip_address=None):
     with buzzers_lock:
         if client_id not in buzzers:
-            buzzers[client_id] = Buzzer(client_id, ip_address)
+            # Try to load from database
+            db_buzzer = get_buzzer(client_id)
+            if db_buzzer:
+                buzzers[client_id] = Buzzer(
+                    client_id=client_id,
+                    ip_address=ip_address,
+                    name=db_buzzer["name"],
+                    color=db_buzzer["color"],
+                )
+                logger.debug(f"Loaded buzzer {client_id} from database")
+            else:
+                # New buzzer, save to database with default name
+                buzzers[client_id] = Buzzer(client_id, ip_address)
+                save_buzzer(client_id, client_id)  # Save with ID as default name
+                logger.debug(f"Created new buzzer {client_id} in database")
+
         if ip_address and not buzzers[client_id].ip_address:
             buzzers[client_id].ip_address = ip_address
         return buzzers[client_id]
@@ -202,8 +242,11 @@ def setup_mqtt():
                 mqtt_client = None
 
 
-# Initialize MQTT when module is loaded
-setup_mqtt()
+# Initialize MQTT when module is loaded (skip if DISABLE_MQTT is set)
+if not os.getenv("DISABLE_MQTT"):
+    setup_mqtt()
+else:
+    logger.info("MQTT disabled via DISABLE_MQTT environment variable")
 
 
 # ============================================================================
@@ -245,12 +288,22 @@ def update_buzzer(client_id):
     data = request.get_json() or {}
     with buzzers_lock:
         if client_id in buzzers:
+            updated = False
             if "name" in data:
                 buzzers[client_id].name = data["name"]
+                updated = True
             if "enabled" in data:
                 buzzers[client_id].enabled = bool(data["enabled"])
             if "color" in data:
                 buzzers[client_id].color = data["color"]
+                updated = True
+
+            # Save to database if name or color changed
+            if updated:
+                save_buzzer(
+                    client_id, buzzers[client_id].name, buzzers[client_id].color
+                )
+
             return jsonify(buzzers[client_id].to_dict())
     return jsonify({"error": "Buzzer nicht gefunden"}), 404
 
@@ -298,5 +351,9 @@ def get_round_buzzes():
 
 
 if __name__ == "__main__":
-    setup_mqtt()
+    # Initialize database (again, in case running directly)
+    init_db()
+    load_buzzers_from_db()
+    if not os.getenv("DISABLE_MQTT"):
+        setup_mqtt()
     app.run(host="0.0.0.0", port=WEB_PORT, debug=False, threaded=True)

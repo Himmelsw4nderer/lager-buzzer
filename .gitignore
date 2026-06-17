@@ -17,3 +17,9 @@ device_ports.mk
 Thumbs.db
 
 __pycache__/
+
+# SQLite database files
+*.db
+*.sqlite
+*.sqlite3
+server/webserver/data/
