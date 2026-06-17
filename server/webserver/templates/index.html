@@ -488,6 +488,11 @@
             let lastWinner = null;
             let isSoundEnabled = true;
 
+            // State management for preventing race conditions
+            let isUpdating = false; // Flag to prevent concurrent updates
+            let pendingRefresh = null; // Timer for debounced refresh
+            let refreshInterval = null; // Reference to the polling interval
+
             function playSound(soundId) {
                 if (!isSoundEnabled) return;
                 const audio = document.getElementById(soundId);
@@ -572,7 +577,7 @@
             function changeLanguage(lang) {
                 currentLanguage = lang;
                 updateLanguage();
-                fetchSystemState();
+                scheduleRefresh(0);
             }
 
             function updateLanguage() {
@@ -638,8 +643,51 @@
                 return translations[currentLanguage][key] || key;
             }
 
+            // Debounced refresh to prevent race conditions
+            function scheduleRefresh(delay = 0) {
+                // Clear any pending refresh
+                if (pendingRefresh) {
+                    clearTimeout(pendingRefresh);
+                }
+
+                // Schedule the refresh
+                pendingRefresh = setTimeout(() => {
+                    pendingRefresh = null;
+                    if (!isUpdating) {
+                        fetchSystemState();
+                    }
+                }, delay);
+            }
+
+            // Start the polling interval
+            function startPolling() {
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                }
+                refreshInterval = setInterval(() => {
+                    if (!isUpdating) {
+                        fetchSystemState();
+                    }
+                }, 500);
+            }
+
+            // Stop the polling interval temporarily
+            function stopPolling() {
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+            }
+
             async function fetchSystemState() {
+                // Prevent concurrent execution
+                if (isUpdating) {
+                    console.log("Skipping fetchSystemState - already updating");
+                    return;
+                }
+
                 try {
+                    isUpdating = true;
                     // Fetch Stats
                     const statsRes = await fetch("/api/stats");
                     const stats = await statsRes.json();
@@ -774,47 +822,70 @@
                     });
                 } catch (err) {
                     console.error("Fehler beim Laden der Daten:", err);
+                } finally {
+                    // Always reset the updating flag
+                    isUpdating = false;
+                    // If there's a pending refresh, trigger it now
+                    if (pendingRefresh) {
+                        clearTimeout(pendingRefresh);
+                        pendingRefresh = null;
+                        fetchSystemState();
+                    }
                 }
             }
 
             async function triggerAction(actionName) {
-                await fetch("/api/round", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: actionName }),
-                });
-                fetchSystemState();
+                stopPolling();
+                try {
+                    await fetch("/api/round", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: actionName }),
+                    });
+                } finally {
+                    startPolling();
+                    scheduleRefresh(0);
+                }
             }
 
             async function enableAllBuzzers() {
-                await fetch("/api/buzzers/enable_all", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                });
-                fetchSystemState();
+                stopPolling();
+                try {
+                    await fetch("/api/buzzers/enable_all", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                    });
+                } finally {
+                    startPolling();
+                    scheduleRefresh(0);
+                }
             }
 
             async function lockRoundAndDisableWinner() {
-                // First lock the round
-                await fetch("/api/round", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "lock" }),
-                });
-
-                // Then get the current winner and disable them
-                const statsRes = await fetch("/api/stats");
-                const stats = await statsRes.json();
-
-                if (stats.round.winner) {
-                    await fetch("/api/buzzers/" + stats.round.winner, {
-                        method: "PUT",
+                stopPolling();
+                try {
+                    // First lock the round
+                    await fetch("/api/round", {
+                        method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ enabled: false }),
+                        body: JSON.stringify({ action: "lock" }),
                     });
-                }
 
-                fetchSystemState();
+                    // Then get the current winner and disable them
+                    const statsRes = await fetch("/api/stats");
+                    const stats = await statsRes.json();
+
+                    if (stats.round.winner) {
+                        await fetch("/api/buzzers/" + stats.round.winner, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ enabled: false }),
+                        });
+                    }
+                } finally {
+                    startPolling();
+                    scheduleRefresh(0);
+                }
             }
 
             async function fetchRoundBuzzes() {
@@ -843,12 +914,17 @@
                 const tempDiv = document.createElement("div");
                 tempDiv.style.color = color;
                 if (tempDiv.style.color) {
-                    await fetch("/api/buzzers/" + clientId, {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ color: color }),
-                    });
-                    fetchSystemState();
+                    stopPolling();
+                    try {
+                        await fetch("/api/buzzers/" + clientId, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ color: color }),
+                        });
+                    } finally {
+                        startPolling();
+                        scheduleRefresh(0);
+                    }
                 } else {
                     alert(
                         "Ungültige Farbe! Bitte einen gültigen Hex-Code oder Farbname eingeben.",
@@ -867,27 +943,39 @@
                     newName.trim() !== "" &&
                     newName !== currentName
                 ) {
-                    await fetch("/api/buzzers/" + clientId, {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ name: newName.trim() }),
-                    });
-                    fetchSystemState();
+                    stopPolling();
+                    try {
+                        await fetch("/api/buzzers/" + clientId, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name: newName.trim() }),
+                        });
+                    } finally {
+                        startPolling();
+                        scheduleRefresh(0);
+                    }
                 }
             }
 
             async function toggleBuzzer(clientId, targetState) {
-                await fetch("/api/buzzers/" + clientId, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ enabled: targetState }),
-                });
-                fetchSystemState();
+                stopPolling();
+                try {
+                    await fetch("/api/buzzers/" + clientId, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ enabled: targetState }),
+                    });
+                } finally {
+                    startPolling();
+                    scheduleRefresh(0);
+                }
             }
 
-            // Poll every 500ms
-            setInterval(fetchSystemState, 500);
-            window.onload = fetchSystemState;
+            // Start polling and initial load
+            window.onload = () => {
+                startPolling();
+                fetchSystemState();
+            };
         </script>
     </body>
 </html>
