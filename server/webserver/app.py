@@ -38,6 +38,9 @@ from db import (
     get_buzzer as db_get_buzzer,
 )
 from db import (
+    get_db_cursor,
+)
+from db import (
     increment_buzz_count as db_increment_buzz_count,
 )
 from db import (
@@ -331,18 +334,31 @@ def get_buzzers():
 def update_buzzer(client_id):
     data = request.get_json() or {}
     with buzzers_lock:
-        if client_id in buzzers:
-            if "name" in data:
-                buzzers[client_id].name = data["name"]
-                db_update_buzzer_field(client_id, "name", data["name"])
-            if "enabled" in data:
-                buzzers[client_id].enabled = bool(data["enabled"])
-                db_update_buzzer_field(client_id, "enabled", bool(data["enabled"]))
-            if "color" in data:
-                buzzers[client_id].color = data["color"]
-                db_update_buzzer_field(client_id, "color", data["color"])
-            return jsonify(buzzers[client_id].to_dict())
-    return jsonify({"error": "Buzzer nicht gefunden"}), 404
+        # If buzzer not in memory, try to load from database
+        if client_id not in buzzers:
+            db_buzzer = db_get_buzzer(client_id)
+            if db_buzzer:
+                buzzers[client_id] = Buzzer(
+                    client_id=db_buzzer["client_id"],
+                    ip_address=db_buzzer["ip_address"],
+                    name=db_buzzer["name"],
+                    enabled=db_buzzer["enabled"],
+                    buzz_count=db_buzzer["buzz_count"],
+                    color=db_buzzer["color"],
+                )
+            else:
+                return jsonify({"error": "Buzzer nicht gefunden"}), 404
+
+        if "name" in data:
+            buzzers[client_id].name = data["name"]
+            db_update_buzzer_field(client_id, "name", data["name"])
+        if "enabled" in data:
+            buzzers[client_id].enabled = bool(data["enabled"])
+            db_update_buzzer_field(client_id, "enabled", bool(data["enabled"]))
+        if "color" in data:
+            buzzers[client_id].color = data["color"]
+            db_update_buzzer_field(client_id, "color", data["color"])
+        return jsonify(buzzers[client_id].to_dict())
 
 
 @app.route("/api/round", methods=["GET", "POST"])
@@ -374,10 +390,15 @@ def manage_round():
 
 @app.route("/api/buzzers/enable_all", methods=["POST"])
 def enable_all_buzzers():
+    # Update all buzzers in database directly
+    with get_db_cursor() as cursor:
+        cursor.execute("UPDATE buzzers SET enabled = 1, updated_at = CURRENT_TIMESTAMP")
+
+    # Also update in-memory cache
     with buzzers_lock:
         for buzzer in buzzers.values():
             buzzer.enabled = True
-            db_update_buzzer_field(buzzer.client_id, "enabled", True)
+
     return jsonify({"status": "success", "message": "All buzzers enabled"})
 
 
