@@ -10,23 +10,22 @@ const char* MQTT_USER = nullptr;
 const char* MQTT_PASSWORD = nullptr;
 const char* MQTT_CLIENT_ID = nullptr;
 
+LEDController led(D7, 1000);
 FlankButton btn(D2, true);
 BuzzSync buzzSync;
 
-
-// Empty callback - you can implement LED/speaker logic here later
 void onWinnerNotification(bool isWinner) {
-    // TODO: Implement your LED and speaker logic here
-    // isWinner = true when this buzzer is the winner
-    // isWinner = false when someone else won or round was reset
     if (isWinner) {
+        led.trigger();
         Serial.println("[BUZZER] I AM THE WINNER!");
     } else {
+        led.stop();
         Serial.println("[BUZZER] Not the winner.");
     }
 }
 
 void setup() {
+    led.begin();
     Serial.begin(115200);
     WiFi.begin("lagerbuzzer", "lagerbuzzer");
     Serial.println("[BUZZER] Connecting to WiFi...");
@@ -48,6 +47,7 @@ void setup() {
 
 void loop() {
     buzzSync.update();
+    led.update();
 
     if (btn.isPressed()) {
         uint32_t pressTime = millis();
