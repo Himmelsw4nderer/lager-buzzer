@@ -203,6 +203,10 @@ def setup_mqtt():
                 mqtt_client = None
 
 
+# Initialize MQTT when module is loaded
+setup_mqtt()
+
+
 # ============================================================================
 # Flask Endpoints
 # ============================================================================
