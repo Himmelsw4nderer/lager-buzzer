@@ -180,42 +180,48 @@ def publish_winner(winner_id):
 def setup_mqtt():
     global mqtt_client
 
-    # If MQTT is already set up and connected, don't reinitialize
-    if mqtt_client is not None and mqtt_client.is_connected():
-        return
-
-    # If MQTT client exists but is disconnected, try to reconnect
-    if mqtt_client is not None and not mqtt_client.is_connected():
-        try:
-            logger.info("MQTT disconnected, attempting to reconnect...")
-            mqtt_client.reconnect()
+    # Use lock to prevent concurrent setup attempts
+    with mqtt_setup_lock:
+        # If MQTT is already set up and connected, don't reinitialize
+        if mqtt_client is not None and mqtt_client.is_connected():
             return
-        except Exception as e:
-            logger.warning(f"MQTT reconnect failed: {e}. Will retry with new client.")
-            mqtt_client = None
 
-    retries = 5
-    retry_delay = 2
-
-    for attempt in range(retries):
-        try:
-            mqtt_client = mqtt.Client()
-            mqtt_client.on_connect = on_mqtt_connect
-            mqtt_client.on_message = on_mqtt_message
-            mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
-            mqtt_client.loop_start()
-            logger.info(f"Connected to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
-            return
-        except Exception as e:
-            if attempt < retries - 1:
+        # If MQTT client exists but is disconnected, try to reconnect
+        if mqtt_client is not None and not mqtt_client.is_connected():
+            try:
+                logger.info("MQTT disconnected, attempting to reconnect...")
+                mqtt_client.reconnect()
+                return
+            except Exception as e:
                 logger.warning(
-                    f"MQTT connection failed (attempt {attempt + 1}/{retries}): {e}. Retrying in {retry_delay}s..."
+                    f"MQTT reconnect failed: {e}. Will retry with new client."
                 )
-                time.sleep(retry_delay)
-            else:
-                logger.error(f"MQTT connection failed after {retries} attempts: {e}")
-                # Create a dummy client to avoid None reference errors
                 mqtt_client = None
+
+        retries = 5
+        retry_delay = 2
+
+        for attempt in range(retries):
+            try:
+                mqtt_client = mqtt.Client()
+                mqtt_client.on_connect = on_mqtt_connect
+                mqtt_client.on_message = on_mqtt_message
+                mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
+                mqtt_client.loop_start()
+                logger.info(f"Connected to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
+                return
+            except Exception as e:
+                if attempt < retries - 1:
+                    logger.warning(
+                        f"MQTT connection failed (attempt {attempt + 1}/{retries}): {e}. Retrying in {retry_delay}s..."
+                    )
+                    time.sleep(retry_delay)
+                else:
+                    logger.error(
+                        f"MQTT connection failed after {retries} attempts: {e}"
+                    )
+                    # Create a dummy client to avoid None reference errors
+                    mqtt_client = None
 
 
 def check_mqtt_connection():
