@@ -27,20 +27,45 @@ WEB_PORT = int(os.getenv("WEB_PORT", 5000))
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+# Import database module
+from db import (
+    create_or_update_buzzer as db_create_or_update_buzzer,
+)
+from db import (
+    get_all_buzzers as db_get_all_buzzers,
+)
+from db import (
+    get_buzzer as db_get_buzzer,
+)
+from db import (
+    increment_buzz_count as db_increment_buzz_count,
+)
+from db import (
+    update_buzzer_field as db_update_buzzer_field,
+)
+
 # ============================================================================
 # Data Structures
 # ============================================================================
 
 
 class Buzzer:
-    def __init__(self, client_id, ip_address=None):
+    def __init__(
+        self,
+        client_id,
+        ip_address=None,
+        name=None,
+        enabled=True,
+        buzz_count=0,
+        color=None,
+    ):
         self.client_id = client_id
         self.ip_address = ip_address
-        self.name = client_id  # Defaults to ID until renamed
-        self.enabled = True  # Used to lock out wrong answers
+        self.name = name or client_id  # Defaults to ID until renamed
+        self.enabled = enabled  # Used to lock out wrong answers
         self.last_buzz_time = None
-        self.buzz_count = 0
-        self.color = None  # Custom color for this buzzer
+        self.buzz_count = buzz_count
+        self.color = color  # Custom color for this buzzer
 
     def to_dict(self):
         return {
@@ -83,18 +108,71 @@ round_lock = threading.Lock()
 
 mqtt_client = None
 
+
+def load_buzzers_from_db():
+    """Load all buzzers from database into memory on startup."""
+    global buzzers
+    with buzzers_lock:
+        all_buzzers = db_get_all_buzzers()
+        buzzers = {}
+        for client_id, buzzer_data in all_buzzers.items():
+            buzzers[client_id] = Buzzer(
+                client_id=buzzer_data["client_id"],
+                ip_address=buzzer_data["ip_address"],
+                name=buzzer_data["name"],
+                enabled=buzzer_data["enabled"],
+                buzz_count=buzzer_data["buzz_count"],
+                color=buzzer_data["color"],
+            )
+
+
 # ============================================================================
 # Helper Functions
 # ============================================================================
 
 
 def get_or_create_buzzer(client_id, ip_address=None):
+    """Get or create a buzzer, syncing with database."""
     with buzzers_lock:
-        if client_id not in buzzers:
-            buzzers[client_id] = Buzzer(client_id, ip_address)
-        if ip_address and not buzzers[client_id].ip_address:
-            buzzers[client_id].ip_address = ip_address
-        return buzzers[client_id]
+        # First check in-memory cache
+        if client_id in buzzers:
+            # Update IP address if provided and not set
+            if ip_address and not buzzers[client_id].ip_address:
+                buzzers[client_id].ip_address = ip_address
+                # Also update in database
+                db_update_buzzer_field(client_id, "ip_address", ip_address)
+            return buzzers[client_id]
+
+        # Check database
+        db_buzzer = db_get_buzzer(client_id)
+        if db_buzzer:
+            # Load from database into memory
+            buzzers[client_id] = Buzzer(
+                client_id=db_buzzer["client_id"],
+                ip_address=db_buzzer["ip_address"] or ip_address,
+                name=db_buzzer["name"],
+                enabled=db_buzzer["enabled"],
+                buzz_count=db_buzzer["buzz_count"],
+                color=db_buzzer["color"],
+            )
+            # Update IP if provided
+            if ip_address and not buzzers[client_id].ip_address:
+                buzzers[client_id].ip_address = ip_address
+                db_update_buzzer_field(client_id, "ip_address", ip_address)
+            return buzzers[client_id]
+
+        # Create new buzzer in both memory and database
+        new_buzzer = Buzzer(client_id, ip_address)
+        db_create_or_update_buzzer(
+            client_id=client_id,
+            ip_address=ip_address,
+            name=client_id,
+            enabled=True,
+            buzz_count=0,
+            color=None,
+        )
+        buzzers[client_id] = new_buzzer
+        return new_buzzer
 
 
 def extract_buzzer_id(payload_dict, topic):
@@ -111,6 +189,9 @@ def add_buzz_event(topic, payload_dict, timestamp):
     buzzer = get_or_create_buzzer(buzzer_id, buzzer_ip)
     buzzer.last_buzz_time = timestamp
     buzzer.buzz_count += 1
+
+    # Update buzz count in database
+    db_increment_buzz_count(buzzer_id)
 
     event = BuzzEvent(topic, payload_dict, timestamp, buzzer_id)
 
@@ -189,6 +270,9 @@ def setup_mqtt():
             mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
             mqtt_client.loop_start()
             logger.info(f"Connected to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
+            # Load buzzers from database after successful MQTT connection
+            load_buzzers_from_db()
+            logger.info(f"Loaded {len(buzzers)} buzzers from database")
             return
         except Exception as e:
             if attempt < retries - 1:
@@ -200,6 +284,9 @@ def setup_mqtt():
                 logger.error(f"MQTT connection failed after {retries} attempts: {e}")
                 # Create a dummy client to avoid None reference errors
                 mqtt_client = None
+                # Still try to load buzzers from database
+                load_buzzers_from_db()
+                logger.info(f"Loaded {len(buzzers)} buzzers from database")
 
 
 # Initialize MQTT when module is loaded
@@ -247,10 +334,13 @@ def update_buzzer(client_id):
         if client_id in buzzers:
             if "name" in data:
                 buzzers[client_id].name = data["name"]
+                db_update_buzzer_field(client_id, "name", data["name"])
             if "enabled" in data:
                 buzzers[client_id].enabled = bool(data["enabled"])
+                db_update_buzzer_field(client_id, "enabled", bool(data["enabled"]))
             if "color" in data:
                 buzzers[client_id].color = data["color"]
+                db_update_buzzer_field(client_id, "color", data["color"])
             return jsonify(buzzers[client_id].to_dict())
     return jsonify({"error": "Buzzer nicht gefunden"}), 404
 
@@ -287,6 +377,7 @@ def enable_all_buzzers():
     with buzzers_lock:
         for buzzer in buzzers.values():
             buzzer.enabled = True
+            db_update_buzzer_field(buzzer.client_id, "enabled", True)
     return jsonify({"status": "success", "message": "All buzzers enabled"})
 
 
