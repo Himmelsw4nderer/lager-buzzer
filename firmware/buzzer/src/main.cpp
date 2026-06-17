@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <FlankButton.h>
+#include <LEDController.h>
 #include <BuzzSync.h>
 
 // MQTT Configuration - update these for your environment
