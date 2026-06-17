@@ -184,6 +184,16 @@ def setup_mqtt():
     if mqtt_client is not None and mqtt_client.is_connected():
         return
 
+    # If MQTT client exists but is disconnected, try to reconnect
+    if mqtt_client is not None and not mqtt_client.is_connected():
+        try:
+            logger.info("MQTT disconnected, attempting to reconnect...")
+            mqtt_client.reconnect()
+            return
+        except Exception as e:
+            logger.warning(f"MQTT reconnect failed: {e}. Will retry with new client.")
+            mqtt_client = None
+
     retries = 5
     retry_delay = 2
 
@@ -208,8 +218,22 @@ def setup_mqtt():
                 mqtt_client = None
 
 
+def check_mqtt_connection():
+    """Periodically check MQTT connection and reconnect if needed."""
+    while True:
+        time.sleep(30)  # Check every 30 seconds
+        if mqtt_client is None or not mqtt_client.is_connected():
+            setup_mqtt()
+
+
 # Initialize MQTT when module is loaded
 setup_mqtt()
+
+# Start background thread to monitor MQTT connection
+import threading
+
+mqtt_monitor_thread = threading.Thread(target=check_mqtt_connection, daemon=True)
+mqtt_monitor_thread.start()
 
 
 # ============================================================================
