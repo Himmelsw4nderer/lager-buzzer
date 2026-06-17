@@ -9,6 +9,13 @@ void _mqttTimeSyncCallback(char* topic, uint8_t* payload, unsigned int length) {
     }
 }
 
+// MQTT callback for winner notification
+void _mqttWinnerCallback(char* topic, uint8_t* payload, unsigned int length) {
+    if (BuzzSync::_instance) {
+        BuzzSync::_instance->_handleWinnerMessage((const char*)payload, length);
+    }
+}
+
 BuzzSync::BuzzSync() : _mqttClient(_wifiClient) {}
 
 void BuzzSync::begin(const char* mqttServer, uint16_t mqttPort,
@@ -42,6 +49,8 @@ void BuzzSync::begin(const char* mqttServer, uint16_t mqttPort,
 void _mqttCallback(char* topic, uint8_t* payload, unsigned int length) {
     if (strcmp(topic, MQTT_TIME_SYNC_TOPIC) == 0) {
         _mqttTimeSyncCallback(topic, payload, length);
+    } else if (strcmp(topic, MQTT_WINNER_TOPIC) == 0) {
+        _mqttWinnerCallback(topic, payload, length);
     }
 }
 
@@ -84,6 +93,15 @@ void BuzzSync::reconnect() {
     } else {
         Serial.print("[BuzzSync] Failed to subscribe to ");
         Serial.println(MQTT_TIME_SYNC_TOPIC);
+    }
+
+    // Subscribe to winner topic
+    if (_mqttClient.subscribe(MQTT_WINNER_TOPIC)) {
+        Serial.print("[BuzzSync] Subscribed to ");
+        Serial.println(MQTT_WINNER_TOPIC);
+    } else {
+        Serial.print("[BuzzSync] Failed to subscribe to ");
+        Serial.println(MQTT_WINNER_TOPIC);
     }
 }
 
@@ -161,6 +179,10 @@ bool BuzzSync::isSynced() const {
     return _lastSync.valid;
 }
 
+void BuzzSync::onWinner(OnWinnerCallback callback) {
+    _winnerCallback = callback;
+}
+
 void BuzzSync::_handleTimeSyncMessage(const char* payload, uint16_t length) {
     // Parse JSON payload: {"time_stamp": unixtimestamp}
     StaticJsonDocument<JSON_TIME_SYNC_BUFFER_SIZE> jsonDoc;
@@ -184,5 +206,39 @@ void BuzzSync::_handleTimeSyncMessage(const char* payload, uint16_t length) {
         Serial.println(_lastSync.localReceiveTime);
     } else {
         Serial.println("[BuzzSync] Time sync message missing time_stamp field");
+    }
+}
+
+void BuzzSync::_handleWinnerMessage(const char* payload, uint16_t length) {
+    // Parse JSON payload: {"winner": "client_id"}
+    StaticJsonDocument<JSON_TIME_SYNC_BUFFER_SIZE> jsonDoc;
+    DeserializationError error = deserializeJson(jsonDoc, payload, length);
+
+    if (error) {
+        Serial.print("[BuzzSync] Failed to parse winner JSON: ");
+        Serial.println(error.c_str());
+        return;
+    }
+
+    if (jsonDoc.containsKey("winner")) {
+        String winnerId = jsonDoc["winner"];
+        bool isWinner = (winnerId == _clientId);
+
+        // Handle reset/clear case (empty winner string)
+        if (winnerId.length() == 0) {
+            isWinner = false;
+        }
+
+        Serial.print("[BuzzSync] Winner message received: ");
+        Serial.print("winner=");
+        Serial.print(winnerId);
+        Serial.print(", isMe=");
+        Serial.println(isWinner ? "YES" : "NO");
+
+        if (_winnerCallback) {
+            _winnerCallback(isWinner);
+        }
+    } else {
+        Serial.println("[BuzzSync] Winner message missing winner field");
     }
 }

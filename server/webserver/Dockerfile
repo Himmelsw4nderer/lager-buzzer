@@ -8,9 +8,11 @@ RUN apt-get update && apt-get install -y \
 
 COPY app.py .
 COPY templates/ ./templates/
+COPY static/ ./static/
+COPY requirements.txt .
 
-RUN pip install flask==3.0.0 paho-mqtt==1.6.1
+RUN pip install -r requirements.txt
 
 EXPOSE 5000
 
-CMD ["python3", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--threads", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "app:app"]

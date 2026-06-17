@@ -20,6 +20,7 @@ app = Flask(__name__)
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_BUZZ_TOPIC = os.getenv("MQTT_BUZZ_TOPIC", "lagerbuzzer/buzz")
+MQTT_WINNER_TOPIC = os.getenv("MQTT_WINNER_TOPIC", "lagerbuzzer/winner")
 WEB_PORT = int(os.getenv("WEB_PORT", 5000))
 
 # Setup logging
@@ -132,6 +133,8 @@ def add_buzz_event(topic, payload_dict, timestamp):
             if current_round["winner"] is None:
                 current_round["winner"] = buzzer_id
                 logger.info(f"🏆 Gewinner: {buzzer.name} ({buzzer_id})")
+                # Publish winner notification to all buzzers
+                publish_winner(buzzer_id)
 
     return event
 
@@ -160,16 +163,47 @@ def on_mqtt_message(client, userdata, msg):
         logger.error(f"Fehler: {e}")
 
 
+def publish_winner(winner_id):
+    """Publish winner notification to all buzzers."""
+    if mqtt_client and mqtt_client.is_connected():
+        payload = json.dumps({"winner": winner_id})
+        result = mqtt_client.publish(MQTT_WINNER_TOPIC, payload, qos=0, retain=False)
+        if result.rc == mqtt.MQTT_ERR_SUCCESS:
+            logger.info(f"Published winner: {winner_id} to {MQTT_WINNER_TOPIC}")
+        else:
+            logger.error(f"Failed to publish winner: {mqtt.error_string(result.rc)}")
+    else:
+        logger.warning("MQTT client not connected, cannot publish winner")
+
+
 def setup_mqtt():
     global mqtt_client
-    try:
-        mqtt_client = mqtt.Client()
-        mqtt_client.on_connect = on_mqtt_connect
-        mqtt_client.on_message = on_mqtt_message
-        mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
-        mqtt_client.loop_start()
-    except Exception as e:
-        logger.error(f"MQTT Fehler: {e}")
+    retries = 5
+    retry_delay = 2
+
+    for attempt in range(retries):
+        try:
+            mqtt_client = mqtt.Client()
+            mqtt_client.on_connect = on_mqtt_connect
+            mqtt_client.on_message = on_mqtt_message
+            mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
+            mqtt_client.loop_start()
+            logger.info(f"Connected to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
+            return
+        except Exception as e:
+            if attempt < retries - 1:
+                logger.warning(
+                    f"MQTT connection failed (attempt {attempt + 1}/{retries}): {e}. Retrying in {retry_delay}s..."
+                )
+                time.sleep(retry_delay)
+            else:
+                logger.error(f"MQTT connection failed after {retries} attempts: {e}")
+                # Create a dummy client to avoid None reference errors
+                mqtt_client = None
+
+
+# Initialize MQTT when module is loaded
+setup_mqtt()
 
 
 # ============================================================================
@@ -236,11 +270,15 @@ def manage_round():
             current_round["buzzes"].clear()
             current_round["winner"] = None
             current_round["locked"] = False
+            # Publish empty winner to turn off all buzzer notifications
+            publish_winner("")
         elif action == "lock":
             current_round["locked"] = True
         elif action == "clear_winner":
             current_round["winner"] = None
             current_round["locked"] = False
+            # Publish empty winner to turn off all buzzer notifications
+            publish_winner("")
     return jsonify({"status": "success"})
 
 

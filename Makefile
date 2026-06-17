@@ -6,7 +6,7 @@
 
 .PHONY: help identify find-port lookup-buzzer-mac \
         buzzer-build buzzer-upload buzzer-monitor \
-        scan clean
+        scan clean server-start server-dev
 
 FIRMWARE_DIR    := firmware
 BUZZER_DIR      := $(FIRMWARE_DIR)/buzzer
@@ -43,6 +43,10 @@ help:
 	@echo ""
 	@echo "Util:"
 	@echo "  clean                                 Clean build artifacts"
+	@echo ""
+	@echo "Server:"
+	@echo "  server-start                          Start production server (gunicorn)"
+	@echo "  server-dev                            Start dev server (flask)"
 	@echo ""
 	@echo "Config (device_macs.mk):"
 	@echo "  BUZZER_IDS      : $(if $(BUZZER_IDS),$(BUZZER_IDS),<unset>)"
@@ -134,3 +138,15 @@ buzzer-monitor:
 clean:
 	@cd $(BUZZER_DIR) && pio run -e $(PIO_ENV) --target clean || true
 	@echo "Done."
+
+# ─── Server ────────────────────────────────────────────────────────────────────
+
+SERVER_DIR := server/webserver
+
+server-dev:
+	@echo "Starting Flask dev server..."
+	@cd $(SERVER_DIR) && python3 app.py
+
+server-start:
+	@echo "Starting production server with Gunicorn..."
+	@cd $(SERVER_DIR) && gunicorn --bind 0.0.0.0:5000 --workers 4 --threads 2 --timeout 120 --access-logfile - --error-logfile - app:app

@@ -1,19 +1,32 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <FlankButton.h>
+#include <LEDController.h>
 #include <BuzzSync.h>
 
 // MQTT Configuration - update these for your environment
 const char* MQTT_SERVER = "192.168.4.1";
 const uint16_t MQTT_PORT = 1883;
-const char* MQTT_USER = nullptr;           // Set if your broker requires authentication
-const char* MQTT_PASSWORD = nullptr;       // Set if your broker requires authentication
-const char* MQTT_CLIENT_ID = nullptr;      // Optional: custom client ID, or auto-generated
+const char* MQTT_USER = nullptr;
+const char* MQTT_PASSWORD = nullptr;
+const char* MQTT_CLIENT_ID = nullptr;
 
+LEDController led(D7, 10000);
 FlankButton btn(D2, true);
 BuzzSync buzzSync;
 
+void onWinnerNotification(bool isWinner) {
+    if (isWinner) {
+        led.trigger();
+        Serial.println("[BUZZER] I AM THE WINNER!");
+    } else {
+        led.stop();
+        Serial.println("[BUZZER] Not the winner.");
+    }
+}
+
 void setup() {
+    led.begin();
     Serial.begin(115200);
     WiFi.begin("lagerbuzzer", "lagerbuzzer");
     Serial.println("[BUZZER] Connecting to WiFi...");
@@ -28,11 +41,14 @@ void setup() {
     btn.begin();
     buzzSync.begin(MQTT_SERVER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD, MQTT_CLIENT_ID);
 
+    buzzSync.onWinner(onWinnerNotification);
+
     Serial.println("[BUZZER] Ready.");
 }
 
 void loop() {
     buzzSync.update();
+    led.update();
 
     if (btn.isPressed()) {
         uint32_t pressTime = millis();
