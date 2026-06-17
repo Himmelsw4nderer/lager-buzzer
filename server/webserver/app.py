@@ -283,19 +283,27 @@ def get_stats():
             "winner": current_round["winner"],
             "locked": current_round["locked"],
         }
-    return jsonify(
+    response = jsonify(
         {
             "total_buzzers": total_buzzers,
             "mqtt_connected": mqtt_client.is_connected() if mqtt_client else False,
             "round": round_info,
         }
     )
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @app.route("/api/buzzers", methods=["GET"])
 def get_buzzers():
     with buzzers_lock:
-        return jsonify({bid: b.to_dict() for bid, b in buzzers.items()})
+        response = jsonify({bid: b.to_dict() for bid, b in buzzers.items()})
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
 
 @app.route("/api/buzzers/<client_id>", methods=["PUT"])
@@ -332,9 +340,13 @@ def manage_round():
     global current_round
     if request.method == "GET":
         with round_lock:
-            return jsonify(
+            response = jsonify(
                 {"winner": current_round["winner"], "locked": current_round["locked"]}
             )
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+            return response
 
     action = (request.get_json() or {}).get("action", "reset")
     with round_lock:
@@ -368,7 +380,11 @@ def enable_all_buzzers():
 def get_round_buzzes():
     with round_lock:
         buzzes_order = list(current_round["buzzes"].keys())
-    return jsonify({"buzzes": buzzes_order})
+    response = jsonify({"buzzes": buzzes_order})
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 if __name__ == "__main__":
