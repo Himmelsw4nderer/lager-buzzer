@@ -107,6 +107,41 @@ MQTT_BROKER=192.168.1.100 python webserver/app.py
 
 The web interface will be available at `http://localhost:5000`
 
+### Soundboard Service
+
+The `soundboard` service plays a sound file on the server's speakers when a buzzer assigned to the
+currently active "mode" is pressed — independent of the quiz/winner-selection flow.
+
+```sh
+# Copy the example modes file and edit it (gitignored, event-specific)
+cp server/soundboard/modes.json.example server/soundboard/modes.json
+
+# Drop your mp3 files into server/soundboard/sounds/ (gitignored)
+cp applause.mp3 fail.mp3 server/soundboard/sounds/
+
+docker compose up soundboard
+```
+
+`modes.json` defines named modes, each with a list of buzzer IDs and a sound file:
+
+```json
+{
+  "modes": [
+    {"name": "applause", "buzzer_ids": ["buzzer-101", "buzzer-102"], "sound_file": "applause.mp3"},
+    {"name": "fail", "buzzer_ids": ["buzzer-103"], "sound_file": "fail.mp3"}
+  ]
+}
+```
+
+Switch the active mode via REST (only one mode is active at a time; buzzes are ignored while none
+is active):
+
+```sh
+curl localhost:5001/api/modes
+curl -X POST localhost:5001/api/mode/active \
+  -H 'Content-Type: application/json' -d '{"name": "applause"}'
+```
+
 ## How it works
 
 1. `buzzer-upload BUZZER_DEVICE_ID=101`

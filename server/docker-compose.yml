@@ -35,3 +35,21 @@ services:
     depends_on:
       - mosquitto
     restart: unless-stopped
+  soundboard:
+    build: ./soundboard
+    container_name: soundboard
+    ports:
+      - "5001:5000"
+    environment:
+      - MQTT_BROKER=mosquitto
+      - MQTT_PORT=1883
+      - MQTT_BUZZ_TOPIC=lagerbuzzer/buzz
+      - WEB_PORT=5000
+    volumes:
+      - ./soundboard/sounds:/app/sounds
+      - ./soundboard/modes.json:/app/modes.json
+    devices:
+      - "/dev/snd:/dev/snd"
+    depends_on:
+      - mosquitto
+    restart: unless-stopped

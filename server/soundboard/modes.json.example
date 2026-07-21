@@ -1,0 +1,14 @@
+{
+  "modes": [
+    {
+      "name": "applause",
+      "buzzer_ids": ["buzzer-101", "buzzer-102"],
+      "sound_file": "applause.mp3"
+    },
+    {
+      "name": "fail",
+      "buzzer_ids": ["buzzer-103"],
+      "sound_file": "fail.mp3"
+    }
+  ]
+}

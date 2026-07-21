@@ -5,6 +5,11 @@ firmware/**/.pio/
 device_macs.mk
 device_ports.mk
 
+# Soundboard: event-specific config and audio files, not repo content
+server/soundboard/modes.json
+server/soundboard/sounds/*
+!server/soundboard/sounds/.gitkeep
+
 # Editor
 .vscode/
 .idea/
