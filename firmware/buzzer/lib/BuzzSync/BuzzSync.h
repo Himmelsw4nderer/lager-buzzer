@@ -8,11 +8,13 @@
 // MQTT topics
 #define MQTT_TIME_SYNC_TOPIC "lagerbuzzer/time_sync"
 #define MQTT_BUZZ_TOPIC "lagerbuzzer/buzz"
-#define MQTT_WINNER_TOPIC "lagerbuzzer/winner"
+#define MQTT_LED_TOPIC_PREFIX "lagerbuzzer/"
+#define MQTT_LED_TOPIC_SUFFIX "/led"
 
 // JSON buffer sizes
 #define JSON_TIME_SYNC_BUFFER_SIZE 128
 #define JSON_BUZZ_BUFFER_SIZE 512  // Increased to accommodate client_id and IP address
+#define JSON_LED_BUFFER_SIZE 64
 
 class BuzzSync {
 public:
@@ -30,9 +32,9 @@ public:
 
     void reconnect();
 
-    // Callback for winner notification
-    using OnWinnerCallback = void (*)(bool isWinner);
-    void onWinner(OnWinnerCallback callback);
+    // Callback for LED commands from the server
+    using OnLedCommandCallback = void (*)(long durationMs);
+    void onLedCommand(OnLedCommandCallback callback);
 
     static BuzzSync* _instance;
 
@@ -50,6 +52,9 @@ private:
     // Store the client ID for this buzzer
     String _clientId;
 
+    // Per-device LED command topic, built from _clientId once resolved
+    String _ledTopic;
+
     WiFiClient _wifiClient;
     PubSubClient _mqttClient;
 
@@ -59,12 +64,12 @@ private:
     const char* _mqttPassword;
 
     friend void _mqttTimeSyncCallback(char* topic, uint8_t* payload, unsigned int length);
-    friend void _mqttWinnerCallback(char* topic, uint8_t* payload, unsigned int length);
+    friend void _mqttLedCallback(char* topic, uint8_t* payload, unsigned int length);
     friend void _mqttCallback(char* topic, uint8_t* payload, unsigned int length);
 
     void _handleTimeSyncMessage(const char* payload, uint16_t length);
-    void _handleWinnerMessage(const char* payload, uint16_t length);
+    void _handleLedMessage(const char* payload, uint16_t length);
     void _setupMqttCallbacks();
 
-    OnWinnerCallback _winnerCallback = nullptr;
+    OnLedCommandCallback _ledCommandCallback = nullptr;
 };

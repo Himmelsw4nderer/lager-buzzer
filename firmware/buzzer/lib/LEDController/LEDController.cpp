@@ -1,32 +1,34 @@
 #include "LEDController.h"
 
-LEDController::LEDController(uint8_t pin, unsigned long durationMs)
-  : _pin(pin), _durationMs(durationMs), _triggerTime(0), _isTriggered(false) {}
+LEDController::LEDController(uint8_t pin) : _pin(pin) {}
 
 void LEDController::begin() {
   pinMode(_pin, OUTPUT);
   digitalWrite(_pin, LOW);
 }
 
-void LEDController::trigger() {
+void LEDController::turnOn(unsigned long durationMs) {
   _triggerTime = millis();
-  _isTriggered = true;
+  _durationMs = durationMs;
+  _indefinite = (durationMs == 0);
+  _isOn = true;
   digitalWrite(_pin, HIGH);
 }
 
 void LEDController::stop() {
   digitalWrite(_pin, LOW);
-  _isTriggered = false;
+  _isOn = false;
 }
 
 void LEDController::update() {
-  if (_isTriggered && (millis() - _triggerTime >= _durationMs)) {
+  if (_isOn && !_indefinite && (millis() - _triggerTime >= _durationMs)) {
     digitalWrite(_pin, LOW);
-    _isTriggered = false;
+    _isOn = false;
   }
 }
 
 bool LEDController::isActive() {
-  if (!_isTriggered) return false;
+  if (!_isOn) return false;
+  if (_indefinite) return true;
   return (millis() - _triggerTime < _durationMs);
 }

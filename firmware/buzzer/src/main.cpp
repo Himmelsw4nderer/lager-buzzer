@@ -17,17 +17,18 @@ const char* MQTT_CLIENT_ID = "buzzer-" STRINGIFY(DEVICE_ID);
 const char* MQTT_CLIENT_ID = nullptr;
 #endif
 
-LEDController led(D7, 10000);
+LEDController led(D7);
 FlankButton btn(D2, true);
 BuzzSync buzzSync;
 
-void onWinnerNotification(bool isWinner) {
-    if (isWinner) {
-        led.trigger();
-        Serial.println("[BUZZER] I AM THE WINNER!");
-    } else {
+void handleLedCommand(long durationMs) {
+    if (durationMs < 0) {
         led.stop();
-        Serial.println("[BUZZER] Not the winner.");
+        Serial.println("[BUZZER] LED off");
+    } else {
+        led.turnOn((unsigned long)durationMs);
+        Serial.print("[BUZZER] LED on, duration_ms=");
+        Serial.println(durationMs);
     }
 }
 
@@ -47,7 +48,7 @@ void setup() {
     btn.begin();
     buzzSync.begin(MQTT_SERVER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD, MQTT_CLIENT_ID);
 
-    buzzSync.onWinner(onWinnerNotification);
+    buzzSync.onLedCommand(handleLedCommand);
 
     Serial.println("[BUZZER] Ready.");
 }

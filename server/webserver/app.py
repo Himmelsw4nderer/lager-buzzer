@@ -20,7 +20,7 @@ app = Flask(__name__)
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_BUZZ_TOPIC = os.getenv("MQTT_BUZZ_TOPIC", "lagerbuzzer/buzz")
-MQTT_WINNER_TOPIC = os.getenv("MQTT_WINNER_TOPIC", "lagerbuzzer/winner")
+MQTT_LED_TOPIC_TEMPLATE = os.getenv("MQTT_LED_TOPIC_TEMPLATE", "lagerbuzzer/{buzzer_id}/led")
 WEB_PORT = int(os.getenv("WEB_PORT", 5000))
 
 # Setup logging
@@ -120,6 +120,7 @@ def add_buzz_event(topic, payload_dict, timestamp):
             buzz_events.pop(0)
 
     # Core Logic: Ignore disabled buzzers and locked rounds
+    became_winner = False
     with round_lock:
         if not current_round["active"] or current_round["locked"]:
             return event
@@ -132,9 +133,16 @@ def add_buzz_event(topic, payload_dict, timestamp):
             current_round["buzzes"][buzzer_id] = event
             if current_round["winner"] is None:
                 current_round["winner"] = buzzer_id
-                logger.info(f"🏆 Gewinner: {buzzer.name} ({buzzer_id})")
-                # Publish winner notification to all buzzers
-                publish_winner(buzzer_id)
+                became_winner = True
+
+    if became_winner:
+        logger.info(f"🏆 Gewinner: {buzzer.name} ({buzzer_id})")
+        # Light the winner's LED and turn off everyone else's
+        with buzzers_lock:
+            other_ids = [bid for bid in buzzers if bid != buzzer_id]
+        publish_led(buzzer_id, 0)
+        for other_id in other_ids:
+            publish_led(other_id, -1)
 
     return event
 
@@ -163,17 +171,22 @@ def on_mqtt_message(client, userdata, msg):
         logger.error(f"Fehler: {e}")
 
 
-def publish_winner(winner_id):
-    """Publish winner notification to all buzzers."""
+def publish_led(buzzer_id, duration_ms):
+    """Publish an LED command to a single buzzer.
+
+    duration_ms == 0 -> stay on indefinitely, negative -> turn off now,
+    positive -> on for that many ms then auto-off.
+    """
     if mqtt_client and mqtt_client.is_connected():
-        payload = json.dumps({"winner": winner_id})
-        result = mqtt_client.publish(MQTT_WINNER_TOPIC, payload, qos=0, retain=False)
+        topic = MQTT_LED_TOPIC_TEMPLATE.format(buzzer_id=buzzer_id)
+        payload = json.dumps({"duration_ms": duration_ms})
+        result = mqtt_client.publish(topic, payload, qos=0, retain=False)
         if result.rc == mqtt.MQTT_ERR_SUCCESS:
-            logger.info(f"Published winner: {winner_id} to {MQTT_WINNER_TOPIC}")
+            logger.info(f"Published LED command to {topic}: duration_ms={duration_ms}")
         else:
-            logger.error(f"Failed to publish winner: {mqtt.error_string(result.rc)}")
+            logger.error(f"Failed to publish LED command: {mqtt.error_string(result.rc)}")
     else:
-        logger.warning("MQTT client not connected, cannot publish winner")
+        logger.warning("MQTT client not connected, cannot publish LED command")
 
 
 def setup_mqtt():
@@ -255,6 +268,19 @@ def update_buzzer(client_id):
     return jsonify({"error": "Buzzer nicht gefunden"}), 404
 
 
+@app.route("/api/buzzers/<client_id>/led", methods=["POST"])
+def set_buzzer_led(client_id):
+    """Directly control a single buzzer's LED, independent of round/winner logic."""
+    data = request.get_json() or {}
+    if "duration_ms" not in data:
+        return jsonify({"error": "duration_ms required"}), 400
+    with buzzers_lock:
+        if client_id not in buzzers:
+            return jsonify({"error": "Buzzer nicht gefunden"}), 404
+    publish_led(client_id, data["duration_ms"])
+    return jsonify({"status": "success"})
+
+
 @app.route("/api/round", methods=["GET", "POST"])
 def manage_round():
     global current_round
@@ -270,15 +296,19 @@ def manage_round():
             current_round["buzzes"].clear()
             current_round["winner"] = None
             current_round["locked"] = False
-            # Publish empty winner to turn off all buzzer notifications
-            publish_winner("")
         elif action == "lock":
             current_round["locked"] = True
         elif action == "clear_winner":
             current_round["winner"] = None
             current_round["locked"] = False
-            # Publish empty winner to turn off all buzzer notifications
-            publish_winner("")
+
+    if action in ("reset", "clear_winner"):
+        # Turn off every known buzzer's LED
+        with buzzers_lock:
+            all_ids = list(buzzers.keys())
+        for bid in all_ids:
+            publish_led(bid, -1)
+
     return jsonify({"status": "success"})
 
 

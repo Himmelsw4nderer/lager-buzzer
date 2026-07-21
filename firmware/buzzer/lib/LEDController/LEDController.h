@@ -3,14 +3,15 @@
 
 class LEDController {
   public:
-    // Konstruktor: Pin und Dauer in ms
-    LEDController(uint8_t pin, unsigned long durationMs);
+    // Konstruktor: Pin
+    explicit LEDController(uint8_t pin);
 
     // Initialisierung (im setup() aufrufen)
     void begin();
 
-    // Aktiviert die LED für die festgelegte Dauer
-    void trigger();
+    // Schaltet die LED ein. durationMs == 0 -> bleibt an bis stop() aufgerufen wird,
+    // durationMs > 0 -> schaltet sich nach dieser Zeit automatisch aus.
+    void turnOn(unsigned long durationMs);
 
     // Schaltet die LED sofort aus
     void stop();
@@ -23,7 +24,8 @@ class LEDController {
 
   private:
     uint8_t _pin;
-    unsigned long _durationMs;
-    unsigned long _triggerTime;
-    bool _isTriggered;
+    unsigned long _durationMs = 0;
+    unsigned long _triggerTime = 0;
+    bool _isOn = false;
+    bool _indefinite = false;
 };

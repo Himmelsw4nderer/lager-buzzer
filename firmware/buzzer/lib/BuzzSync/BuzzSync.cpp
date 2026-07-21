@@ -9,10 +9,10 @@ void _mqttTimeSyncCallback(char* topic, uint8_t* payload, unsigned int length) {
     }
 }
 
-// MQTT callback for winner notification
-void _mqttWinnerCallback(char* topic, uint8_t* payload, unsigned int length) {
+// MQTT callback for LED commands
+void _mqttLedCallback(char* topic, uint8_t* payload, unsigned int length) {
     if (BuzzSync::_instance) {
-        BuzzSync::_instance->_handleWinnerMessage((const char*)payload, length);
+        BuzzSync::_instance->_handleLedMessage((const char*)payload, length);
     }
 }
 
@@ -26,6 +26,7 @@ void BuzzSync::begin(const char* mqttServer, uint16_t mqttPort,
     _mqttUser = mqttUser;
     _mqttPassword = mqttPassword;
     _clientId = clientId ? String(clientId) : String("buzzer-") + String(ESP.getChipId(), HEX);
+    _ledTopic = String(MQTT_LED_TOPIC_PREFIX) + _clientId + String(MQTT_LED_TOPIC_SUFFIX);
     _syncTimeoutMs = syncTimeoutMs;
 
     // Setup MQTT client
@@ -49,8 +50,8 @@ void BuzzSync::begin(const char* mqttServer, uint16_t mqttPort,
 void _mqttCallback(char* topic, uint8_t* payload, unsigned int length) {
     if (strcmp(topic, MQTT_TIME_SYNC_TOPIC) == 0) {
         _mqttTimeSyncCallback(topic, payload, length);
-    } else if (strcmp(topic, MQTT_WINNER_TOPIC) == 0) {
-        _mqttWinnerCallback(topic, payload, length);
+    } else if (BuzzSync::_instance && BuzzSync::_instance->_ledTopic.equals(topic)) {
+        _mqttLedCallback(topic, payload, length);
     }
 }
 
@@ -95,13 +96,13 @@ void BuzzSync::reconnect() {
         Serial.println(MQTT_TIME_SYNC_TOPIC);
     }
 
-    // Subscribe to winner topic
-    if (_mqttClient.subscribe(MQTT_WINNER_TOPIC)) {
+    // Subscribe to this device's LED command topic
+    if (_mqttClient.subscribe(_ledTopic.c_str())) {
         Serial.print("[BuzzSync] Subscribed to ");
-        Serial.println(MQTT_WINNER_TOPIC);
+        Serial.println(_ledTopic);
     } else {
         Serial.print("[BuzzSync] Failed to subscribe to ");
-        Serial.println(MQTT_WINNER_TOPIC);
+        Serial.println(_ledTopic);
     }
 }
 
@@ -179,8 +180,8 @@ bool BuzzSync::isSynced() const {
     return _lastSync.valid;
 }
 
-void BuzzSync::onWinner(OnWinnerCallback callback) {
-    _winnerCallback = callback;
+void BuzzSync::onLedCommand(OnLedCommandCallback callback) {
+    _ledCommandCallback = callback;
 }
 
 void BuzzSync::_handleTimeSyncMessage(const char* payload, uint16_t length) {
@@ -209,36 +210,24 @@ void BuzzSync::_handleTimeSyncMessage(const char* payload, uint16_t length) {
     }
 }
 
-void BuzzSync::_handleWinnerMessage(const char* payload, uint16_t length) {
-    // Parse JSON payload: {"winner": "client_id"}
-    StaticJsonDocument<JSON_TIME_SYNC_BUFFER_SIZE> jsonDoc;
+void BuzzSync::_handleLedMessage(const char* payload, uint16_t length) {
+    // Parse JSON payload: {"duration_ms": N}
+    StaticJsonDocument<JSON_LED_BUFFER_SIZE> jsonDoc;
     DeserializationError error = deserializeJson(jsonDoc, payload, length);
 
     if (error) {
-        Serial.print("[BuzzSync] Failed to parse winner JSON: ");
+        Serial.print("[BuzzSync] Failed to parse LED JSON: ");
         Serial.println(error.c_str());
         return;
     }
 
-    if (jsonDoc.containsKey("winner")) {
-        String winnerId = jsonDoc["winner"];
-        bool isWinner = (winnerId == _clientId);
+    // Missing duration_ms is treated as "turn off"
+    long durationMs = jsonDoc["duration_ms"] | -1L;
 
-        // Handle reset/clear case (empty winner string)
-        if (winnerId.length() == 0) {
-            isWinner = false;
-        }
+    Serial.print("[BuzzSync] LED command received: duration_ms=");
+    Serial.println(durationMs);
 
-        Serial.print("[BuzzSync] Winner message received: ");
-        Serial.print("winner=");
-        Serial.print(winnerId);
-        Serial.print(", isMe=");
-        Serial.println(isWinner ? "YES" : "NO");
-
-        if (_winnerCallback) {
-            _winnerCallback(isWinner);
-        }
-    } else {
-        Serial.println("[BuzzSync] Winner message missing winner field");
+    if (_ledCommandCallback) {
+        _ledCommandCallback(durationMs);
     }
 }
