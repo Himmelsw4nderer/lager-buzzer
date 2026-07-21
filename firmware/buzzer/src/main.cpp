@@ -9,7 +9,13 @@ const char* MQTT_SERVER = "192.168.4.1";
 const uint16_t MQTT_PORT = 1883;
 const char* MQTT_USER = nullptr;
 const char* MQTT_PASSWORD = nullptr;
+#ifdef DEVICE_ID
+#define STRINGIFY_(x) #x
+#define STRINGIFY(x) STRINGIFY_(x)
+const char* MQTT_CLIENT_ID = "buzzer-" STRINGIFY(DEVICE_ID);
+#else
 const char* MQTT_CLIENT_ID = nullptr;
+#endif
 
 LEDController led(D7, 10000);
 FlankButton btn(D2, true);
