@@ -46,7 +46,11 @@ void setup() {
     Serial.println(WiFi.localIP());
 
     btn.begin();
-    buzzSync.begin(MQTT_SERVER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD, MQTT_CLIENT_ID);
+    // Must stay well above the timesync service's INTERVAL_MS (server/docker-compose.yml,
+    // 5000 by default) - a timeout equal to the publish interval leaves no margin for
+    // MQTT/WiFi delivery jitter and causes sync to expire between messages.
+    const uint32_t SYNC_TIMEOUT_MS = 15000;
+    buzzSync.begin(MQTT_SERVER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD, MQTT_CLIENT_ID, SYNC_TIMEOUT_MS);
 
     buzzSync.onLedCommand(handleLedCommand);
 
