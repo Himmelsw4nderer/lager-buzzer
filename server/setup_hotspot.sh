@@ -70,9 +70,21 @@ if [ -d "server" ]; then
     echo "--> Navigating to server directory and starting Docker Compose..."
     cd server
 
+    # webserver/soundboard are gated behind Compose profiles; ensure
+    # modes.json is a real file first, otherwise Docker auto-creates the
+    # missing bind-mount target as a directory and crash-loops soundboard.
+    if [ -d soundboard/modes.json ]; then
+        echo "    Found stray directory at soundboard/modes.json, removing..."
+        rmdir soundboard/modes.json
+    fi
+    if [ ! -f soundboard/modes.json ]; then
+        echo "    soundboard/modes.json not found, creating from modes.json.example..."
+        cp soundboard/modes.json.example soundboard/modes.json
+    fi
+
     # Note: Using 'sudo docker' here because the group policy change
     # for $USER won't fully register until the next terminal session.
-    sudo docker compose up -d
+    sudo docker compose --profile webserver --profile soundboard up -d
 else
     echo "❌ Error: 'server' directory not found inside the cloned repository!"
     exit 1
