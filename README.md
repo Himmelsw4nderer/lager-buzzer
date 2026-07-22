@@ -107,20 +107,37 @@ MQTT_BROKER=192.168.1.100 python webserver/app.py
 
 The web interface will be available at `http://localhost:5000`
 
+#### Via Docker
+
+`server/docker-compose.yml` uses [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/)
+to keep the webserver and soundboard independent — `mosquitto` and `timesync` always
+start, but `webserver` and `soundboard` only start when their profile is active:
+
+```sh
+make docker-webserver
+# equivalent to: cd server && docker compose --profile webserver up
+```
+
+Run both profiles at once with `docker compose --profile webserver --profile soundboard up`
+(from `server/`). Stop everything with `make docker-down`.
+
 ### Soundboard Service
 
 The `soundboard` service plays a sound file on the server's speakers when a buzzer assigned to the
 currently active "mode" is pressed — independent of the quiz/winner-selection flow.
 
 ```sh
-# Copy the example modes file and edit it (gitignored, event-specific)
-cp server/soundboard/modes.json.example server/soundboard/modes.json
-
 # Drop your mp3 files into server/soundboard/sounds/ (gitignored)
 cp applause.mp3 fail.mp3 server/soundboard/sounds/
 
-docker compose up soundboard
+make docker-soundboard
+# equivalent to: cd server && docker compose --profile soundboard up
 ```
+
+`make docker-soundboard` auto-creates `server/soundboard/modes.json` from
+`modes.json.example` if it doesn't already exist, so the manual copy step is optional —
+though you'll still want to edit it (it's gitignored, event-specific) to point at your
+own buzzer IDs and sound files before or after first boot.
 
 `modes.json` defines named modes, each with a list of buzzer IDs and a sound file:
 

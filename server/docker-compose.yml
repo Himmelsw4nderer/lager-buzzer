@@ -24,6 +24,7 @@ services:
   webserver:
     build: ./webserver
     container_name: webserver
+    profiles: ["webserver"]
     ports:
       - "5000:5000"
     environment:
@@ -38,6 +39,7 @@ services:
   soundboard:
     build: ./soundboard
     container_name: soundboard
+    profiles: ["soundboard"]
     ports:
       - "5001:5000"
     environment:

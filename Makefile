@@ -6,7 +6,8 @@
 
 .PHONY: help identify find-port lookup-buzzer-mac \
         buzzer-build buzzer-upload buzzer-monitor \
-        scan clean server-start server-dev
+        scan clean server-start server-dev \
+        ensure-modes-json docker-webserver docker-soundboard docker-down
 
 FIRMWARE_DIR    := firmware
 BUZZER_DIR      := $(FIRMWARE_DIR)/buzzer
@@ -47,6 +48,11 @@ help:
 	@echo "Server:"
 	@echo "  server-start                          Start production server (gunicorn)"
 	@echo "  server-dev                            Start dev server (flask)"
+	@echo ""
+	@echo "Docker:"
+	@echo "  docker-webserver                      Start mosquitto+timesync+webserver via compose"
+	@echo "  docker-soundboard                     Start mosquitto+timesync+soundboard via compose"
+	@echo "  docker-down                           Stop all compose services"
 	@echo ""
 	@echo "Config (device_macs.mk):"
 	@echo "  BUZZER_IDS      : $(if $(BUZZER_IDS),$(BUZZER_IDS),<unset>)"
@@ -150,3 +156,31 @@ server-dev:
 server-start:
 	@echo "Starting production server with Gunicorn..."
 	@cd $(SERVER_DIR) && gunicorn --bind 0.0.0.0:5000 --workers 4 --threads 2 --timeout 120 --access-logfile - --error-logfile - app:app
+
+# ─── Docker ──────────────────────────────────────────────────────────────────
+
+COMPOSE_DIR      := server
+SOUNDBOARD_DIR   := server/soundboard
+SOUNDBOARD_MODES := $(SOUNDBOARD_DIR)/modes.json
+
+# Ensures modes.json is a real file before Compose bind-mounts it. If it's
+# missing, Docker silently creates the bind-mount target as a directory
+# instead of failing, which crash-loops the soundboard container.
+ensure-modes-json:
+	@if [ -d $(SOUNDBOARD_MODES) ]; then \
+	  echo "Found stray directory at $(SOUNDBOARD_MODES) (auto-created by Docker for a missing bind-mount file), removing..."; \
+	  rmdir $(SOUNDBOARD_MODES) 2>/dev/null || { echo "ERROR: $(SOUNDBOARD_MODES) is a non-empty directory; remove it manually and re-run." >&2; exit 1; }; \
+	fi
+	@if [ ! -f $(SOUNDBOARD_MODES) ]; then \
+	  echo "$(SOUNDBOARD_MODES) not found, creating from modes.json.example..."; \
+	  cp $(SOUNDBOARD_DIR)/modes.json.example $(SOUNDBOARD_MODES); \
+	fi
+
+docker-webserver:
+	@cd $(COMPOSE_DIR) && docker compose --profile webserver up
+
+docker-soundboard: ensure-modes-json
+	@cd $(COMPOSE_DIR) && docker compose --profile soundboard up
+
+docker-down:
+	@cd $(COMPOSE_DIR) && docker compose down
