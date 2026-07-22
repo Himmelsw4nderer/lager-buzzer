@@ -21,6 +21,19 @@ services:
     depends_on:
       - mosquitto
     restart: unless-stopped
+  discovery:
+    build: ./discovery
+    container_name: discovery
+    # Host networking is required so this container can see broadcast
+    # packets arriving on the Pi's real interface (wlan0/eth0) - Docker's
+    # bridge networking only forwards unicast traffic addressed to the
+    # host's own IP, never broadcasts. No DNS/other-container access is
+    # needed here, so losing Docker's embedded DNS under host networking
+    # is a non-issue.
+    network_mode: host
+    environment:
+      - DISCOVERY_PORT=42424
+    restart: unless-stopped
   webserver:
     build: ./webserver
     container_name: webserver

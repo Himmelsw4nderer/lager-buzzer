@@ -121,6 +121,20 @@ make docker-webserver
 Run both profiles at once with `docker compose --profile webserver --profile soundboard up`
 (from `server/`). Stop everything with `make docker-down`.
 
+### Server Discovery
+
+Buzzers don't have the server's IP hardcoded — at boot (and after ~45s of continuous MQTT
+disconnection) they broadcast a UDP discovery request on port `42424` and use whichever
+address replies as the broker. The `discovery` service in `server/docker-compose.yml`
+answers these requests; it always runs regardless of profile (like `mosquitto`/`timesync`)
+and needs `network_mode: host` to see broadcast traffic at all, since Docker's default
+bridge networking doesn't forward broadcasts into a container.
+
+This means the server's address can change (different network, Pi hotspot on a new
+subnet, DHCP lease renewal) without reflashing any buzzer. One caveat: if a Wi-Fi network
+has client/AP isolation enabled, broadcasts between stations never arrive and discovery
+will fail silently — if buzzers can't find the server, check that setting first.
+
 ### Soundboard Service
 
 The `soundboard` service plays a sound file on the server's speakers when a buzzer assigned to the

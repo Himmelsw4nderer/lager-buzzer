@@ -30,6 +30,16 @@ public:
 
     bool isSynced() const;
 
+    // Raw MQTT connectivity, distinct from isSynced() (which reflects
+    // time-sync message freshness, not the underlying connection state).
+    // Not const: PubSubClient::connected() isn't const-qualified either.
+    bool isMqttConnected();
+
+    // Re-points this client at a different broker address, e.g. after
+    // rediscovering the server via BuzzerDiscovery. mqttServer must outlive
+    // the connection - only the pointer is stored, not a copy.
+    void setServer(const char* mqttServer);
+
     void reconnect();
 
     // Callback for LED commands from the server

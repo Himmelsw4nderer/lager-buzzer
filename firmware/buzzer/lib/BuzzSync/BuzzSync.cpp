@@ -180,6 +180,15 @@ bool BuzzSync::isSynced() const {
     return _lastSync.valid;
 }
 
+bool BuzzSync::isMqttConnected() {
+    return _mqttClient.connected();
+}
+
+void BuzzSync::setServer(const char* mqttServer) {
+    _mqttServer = mqttServer;
+    _mqttClient.setServer(_mqttServer, _mqttPort);
+}
+
 void BuzzSync::onLedCommand(OnLedCommandCallback callback) {
     _ledCommandCallback = callback;
 }
